@@ -40,6 +40,7 @@ input::placeholder{color:var(--muted)}
 .tiles{display:flex;gap:8px;flex:1}
 .tiles video{width:72px;height:96px;object-fit:cover;border-radius:12px;background:#000;border:2px solid var(--line)}
 .tiles video.me{transform:scaleX(-1)}
+.tiles video.rv{width:120px;height:160px}
 .ctl{display:flex;gap:6px}.ctl .btn.off{background:#e5484d;color:#fff}
 .ov .call{position:absolute;top:calc(56px + env(safe-area-inset-top,0px));left:10px;z-index:6;flex-direction:column;align-items:flex-start;padding:0}
 .ov .tiles{flex-direction:column;flex:none}.ov .tiles video{width:60px;height:80px}
@@ -664,6 +665,7 @@ async function initDb(){
 async function connect(){
   if(!(await initDb())) return;
   const R = p => fb.ref(db, `rooms/${ROOM}/${p}`);
+  listenCall();
   fb.onValue(fb.ref(db, ".info/serverTimeOffset"), s => { serverOffset = s.val() || 0; });
   fb.onValue(R("profiles"), s => { profiles = s.val() || {}; repaint(); });
   const me_ = R("presence/" + CID);
@@ -701,68 +703,92 @@ const ICE = { iceCandidatePoolSize: 4, iceServers: [
       "turns:openrelay.metered.ca:443?transport=tcp"
     ], username: "openrelayproject", credential: "openrelayproject" }
 ] };
-const sig = (to, o) => fb.push(RR("call/signals/" + to), { from: CID, ...o });
-const pend = {}, tries = {};
+/* حالت یک‌طرفه: هر کس تماس رو بزنه «پخش‌کننده» می‌شه و به همه‌ی حاضرهای اتاق خودکار تصویر/صدا می‌فرسته؛
+   طرف مقابل فقط «بیننده‌ست» و لازم نیست دوربین/میکروفون یا دکمه‌ای بزنه.
+   جهت پیام‌ها با حرف آخر فیلد from مشخص می‌شه: o = از پخش‌کننده، v = از بیننده (بدون تغییر قوانین دیتابیس) */
+const out = {}, inn = {}, pend = {}, tries = {};
+const sig = (to, role, o) => fb.push(RR("call/signals/" + to), { from: CID + role, ...o });
 function tile(id, src, mine){
   let v = document.getElementById("t_" + id);
-  if(!v){ v = document.createElement("video"); v.id = "t_" + id; v.autoplay = true; v.playsInline = true; v.muted = !!mine; if(mine) v.className = "me"; v.onclick = () => v.play().catch(() => {}); $("tiles").appendChild(v); }
-  v.srcObject = src; v.play().catch(() => {}); return v;
+  if(!v){ v = document.createElement("video"); v.id = "t_" + id; v.autoplay = true; v.playsInline = true; v.muted = !!mine; v.className = mine ? "me" : "rv"; v.onclick = () => { v.muted = !!mine; v.play().catch(() => {}); }; $("tiles").appendChild(v); }
+  v.srcObject = src;
+  v.play().catch(() => { v.muted = true; v.play().catch(() => {}); toast("برای شنیدن صدا روی تصویر بزن"); });
+  return v;
 }
-function dropPeer(id){ if(peers[id]){ const p = peers[id]; p.onconnectionstatechange = p.onicecandidate = p.ontrack = null; p.close(); delete peers[id]; } const v = document.getElementById("t_" + id); if(v) v.remove(); }
-function mkPeer(id){
-  const pc = new RTCPeerConnection(ICE); peers[id] = pc;
+function hidePanel(){ if(!inCall && !Object.keys(inn).length) $("call").hidden = true; }
+function dropOut(id){ const p = out[id]; if(p){ p.onconnectionstatechange = p.onicecandidate = null; p.close(); delete out[id]; } }
+function dropIn(id){ const p = inn[id]; if(p){ p.onconnectionstatechange = p.onicecandidate = p.ontrack = null; p.close(); delete inn[id]; } const v = document.getElementById("t_" + id); if(v) v.remove(); hidePanel(); }
+function mkOut(id){
+  const pc = new RTCPeerConnection(ICE); out[id] = pc;
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
-  pc.onicecandidate = e => { if(e.candidate) sig(id, { type: "ice", data: e.candidate.toJSON() }); };
-  pc.ontrack = e => tile(id, e.streams[0] || (pc._rs = pc._rs || new MediaStream()) && (pc._rs.addTrack(e.track), pc._rs));
+  pc.onicecandidate = e => { if(e.candidate) sig(id, "o", { type: "ice", data: e.candidate.toJSON() }); };
   pc.onconnectionstatechange = () => {
-    if(peers[id] !== pc) return;
+    if(out[id] !== pc) return;
     const st = pc.connectionState;
-    if(st === "connected"){ tries[id] = 0; toast("تماس وصل شد ✅"); }
+    if(st === "connected"){ tries[id] = 0; toast("تصویر به طرف مقابل وصل شد ✅"); }
     else if(st === "failed"){
-      if(CID > id && (tries[id] = (tries[id] || 0) + 1) <= 3){ toast("اتصال برقرار نشد؛ دوباره تلاش می‌کنم (" + tries[id] + ")"); setTimeout(() => { if(inCall && peers[id] === pc) offerTo(id).catch(console.error); }, 1000); }
-      else toast("اتصال تماس برقرار نشد (شبکه یا VPN رو چک کن)");
+      if((tries[id] = (tries[id] || 0) + 1) <= 3){ toast("اتصال برقرار نشد؛ دوباره تلاش می‌کنم (" + tries[id] + ")"); setTimeout(() => { if(inCall && out[id] === pc && pres[id]) offerTo(id).catch(console.error); }, 1000); }
+      else toast("اتصال برقرار نشد؛ اینترنت یا VPN هر دو گوشی رو چک کن");
     }
   };
   return pc;
 }
-async function flush(id, pc){ const q = pend[id] || []; pend[id] = []; for(const c of q) await pc.addIceCandidate(c).catch(() => {}); }
+function mkIn(id){
+  const pc = new RTCPeerConnection(ICE); inn[id] = pc;
+  pc.onicecandidate = e => { if(e.candidate) sig(id, "v", { type: "ice", data: e.candidate.toJSON() }); };
+  pc.ontrack = e => {
+    const s = e.streams[0] || (pc._rs = pc._rs || new MediaStream()); if(!e.streams[0]) s.addTrack(e.track);
+    $("call").hidden = false; tile(id, s);
+  };
+  pc.onconnectionstatechange = () => { if(inn[id] === pc && pc.connectionState === "failed") toast("اتصال تصویر برقرار نشد"); };
+  return pc;
+}
+async function flush(key, pc){ const q = pend[key] || []; pend[key] = []; for(const c of q) await pc.addIceCandidate(c).catch(() => {}); }
 async function onSignal(m){
-  if(!inCall) return;
-  if(m.type === "offer"){
-    dropPeer(m.from); const pc = mkPeer(m.from);
-    await pc.setRemoteDescription(m.data); await flush(m.from, pc);
-    const a = await pc.createAnswer(); await pc.setLocalDescription(a);
-    sig(m.from, { type: "answer", data: { type: a.type, sdp: a.sdp } });
-  } else if(m.type === "answer"){
-    const pc = peers[m.from]; if(!pc || pc.signalingState !== "have-local-offer") return;
-    await pc.setRemoteDescription(m.data); await flush(m.from, pc);
-  } else if(m.type === "ice"){
-    const pc = peers[m.from];
-    if(pc && pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pend[m.from] = pend[m.from] || []).push(m.data);
+  const role = m.from.slice(-1), id = m.from.slice(0, -1);
+  if(role === "o"){            // پخش‌کننده برای من (بیننده) فرستاده
+    if(m.type === "offer"){
+      dropIn(id); const pc = mkIn(id);
+      await pc.setRemoteDescription(m.data); await flush(m.from, pc);
+      const a = await pc.createAnswer(); await pc.setLocalDescription(a);
+      sig(id, "v", { type: "answer", data: { type: a.type, sdp: a.sdp } });
+    } else if(m.type === "ice"){
+      const pc = inn[id]; if(pc && pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pend[m.from] = pend[m.from] || []).push(m.data);
+    }
+  } else if(role === "v"){     // بیننده برای من (پخش‌کننده) جواب داده
+    const pc = out[id];
+    if(m.type === "answer"){ if(!pc || pc.signalingState !== "have-local-offer") return; await pc.setRemoteDescription(m.data); await flush(m.from, pc); }
+    else if(m.type === "ice"){ if(pc && pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pend[m.from] = pend[m.from] || []).push(m.data); }
   }
 }
 async function offerTo(id){
-  dropPeer(id); pend[id] = [];
-  const pc = mkPeer(id), o = await pc.createOffer(); await pc.setLocalDescription(o);
-  sig(id, { type: "offer", data: { type: o.type, sdp: o.sdp } });
+  dropOut(id); pend["v" + id] = [];
+  const pc = mkOut(id), o = await pc.createOffer(); await pc.setLocalDescription(o);
+  sig(id, "o", { type: "offer", data: { type: o.type, sdp: o.sdp } });
+}
+let listening = false;
+async function listenCall(){            // همیشه (حتی بدون تماس) گوش می‌دیم تا بتونیم بیننده باشیم
+  if(listening) return; listening = true;
+  const sg = RR("call/signals/" + CID); await fb.remove(sg).catch(() => {});
+  fb.onChildAdded(sg, s => { const m = s.val(); fb.remove(s.ref); onSignal(m).catch(console.error); });
+  fb.onChildRemoved(RR("call/members"), s => { if(s.key !== CID) dropIn(s.key); });
 }
 async function startCall(){
   if(!db){ toast("اول وارد اتاق شو"); return; }
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 640 } } }); }
   catch(e){ try{ stream = await navigator.mediaDevices.getUserMedia({ audio: true }); toast("دوربین در دسترس نیست؛ فقط صدا"); }catch(e2){ toast("اجازه‌ی میکروفون داده نشد"); return; } }
   inCall = true; $("call").hidden = false; $("callBtn").classList.remove("ghost"); tile("me", stream, true);
-  const sg = RR("call/signals/" + CID); await fb.remove(sg);
-  unsubs.push(fb.onChildAdded(sg, s => { const m = s.val(); fb.remove(s.ref); onSignal(m).catch(console.error); }));
   const mem = RR("call/members/" + CID); fb.set(mem, true); fb.onDisconnect(mem).remove();
-  unsubs.push(fb.onChildAdded(RR("call/members"), s => { if(s.key !== CID && CID > s.key) offerTo(s.key).catch(console.error); }));
-  unsubs.push(fb.onChildRemoved(RR("call/members"), s => dropPeer(s.key)));
-  fb.push(RR("chat"), { sys: true, call: true, text: "📞 " + me + " وارد تماس شد", by: CID, t: fb.serverTimestamp() });
+  unsubs.push(fb.onChildAdded(RR("presence"), s => { if(s.key !== CID) offerTo(s.key).catch(console.error); }));
+  unsubs.push(fb.onChildRemoved(RR("presence"), s => dropOut(s.key)));
+  fb.push(RR("chat"), { sys: true, call: true, text: "📞 " + me + " تصویر زنده رو شروع کرد", by: CID, t: fb.serverTimestamp() });
 }
 function endCall(){
   inCall = false; unsubs.forEach(u => u()); unsubs = [];
-  Object.keys(peers).forEach(dropPeer); Object.keys(pend).forEach(k => delete pend[k]); Object.keys(tries).forEach(k => delete tries[k]);
+  Object.keys(out).forEach(dropOut); Object.keys(pend).forEach(k => delete pend[k]); Object.keys(tries).forEach(k => delete tries[k]);
   if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
-  $("tiles").innerHTML = ""; $("call").hidden = true; $("callBtn").classList.add("ghost");
+  const mv = document.getElementById("t_me"); if(mv) mv.remove();
+  $("callBtn").classList.add("ghost"); hidePanel();
   $("mic").classList.remove("off"); $("mic").textContent = "🎤"; $("cam").classList.remove("off"); $("cam").textContent = "📷";
   if(db) fb.remove(RR("call/members/" + CID));
 }
@@ -772,7 +798,7 @@ function toggleTrack(kind, btn, on, off){
 }
 $("mic").onclick = () => toggleTrack("getAudioTracks", $("mic"), "🎤", "🔇");
 $("cam").onclick = () => toggleTrack("getVideoTracks", $("cam"), "📷", "🚫");
-$("hang").onclick = endCall;
+$("hang").onclick = () => { if(inCall) endCall(); Object.keys(inn).forEach(dropIn); $("call").hidden = true; };
 $("callBtn").onclick = () => inCall ? endCall() : startCall();
 
 /* ---------- واکنش‌ها ---------- */
