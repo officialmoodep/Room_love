@@ -139,6 +139,12 @@ html[data-genre=thriller] #fx{background:radial-gradient(ellipse at center,trans
 .gen button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:14px;padding:12px 4px;font:inherit;font-size:13px;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center}
 .gen button span{font-size:26px;line-height:1}
 .gen button[aria-pressed=true]{border-color:var(--accent);outline:2px solid var(--accent)}
+/* حالت کیبورد باز: فقط ویدیوی کوچک + چت، تا جا برای کادر پیام بمونه */
+body.kb:not(.ov) header,body.kb:not(.ov) .bar{display:none}
+body.kb:not(.ov) .stage{aspect-ratio:auto;height:min(24dvh,170px)}
+body.kb:not(.ov) .chat{margin-top:6px;min-height:120px}
+body.kb:not(.ov){overflow:hidden}
+body.kb2:not(.ov){overflow:hidden}body.kb2:not(.ov) .stage{aspect-ratio:auto;height:min(20dvh,140px)}
 @media(min-width:800px){body{max-width:900px;margin:0 auto}}
 @media(prefers-reduced-motion:reduce){.fab.alert,.chat.blink{animation:none}}
 </style>
@@ -374,7 +380,7 @@ function updMode(){
   wasOv = ov;
 }
 /* کیبورد: ارتفاع صفحه = ناحیه‌ی دیدنی بالای کیبورد (iOS و اندروید) */
-if(window.visualViewport){
+if(window.visualViewport && /iPad|iPhone|iPod/.test(navigator.userAgent)){
   const vv = visualViewport;
   const fit = () => { document.body.style.height = vv.height + "px"; if(vv.offsetTop) scrollTo(0, 0); };
   vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit);
@@ -386,6 +392,14 @@ $("fs").onclick = async () => {
     else { await wrap.requestFullscreen(); try{ await screen.orientation.lock("landscape"); }catch(e){} }
   }catch(e){ toast("تمام‌صفحه پشتیبانی نمی‌شه"); }
 };
+
+/* حالت کیبورد: وقتی کادر پیام فوکوس داره، بقیه‌ی صفحه جمع می‌شه */
+let kbT;
+$("msgIn").addEventListener("focus", () => { clearTimeout(kbT); document.body.classList.add("kb"); setTimeout(() => { $("msgs").scrollTop = $("msgs").scrollHeight; }, 250); });
+$("msgIn").addEventListener("blur", () => { kbT = setTimeout(() => document.body.classList.remove("kb"), 200); });
+$("url").addEventListener("focus", () => document.body.classList.add("kb2"));
+$("url").addEventListener("blur", () => document.body.classList.remove("kb2"));
+document.querySelector("#sendForm button").addEventListener("pointerdown", e => e.preventDefault());
 
 /* ---------- پخش هماهنگ ---------- */
 const getVideo = () => $("stage").querySelector("video");
