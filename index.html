@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111a33">
+<title>اتاق ما</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#111a33; --panel:#1a2547; --panel2:#223059; --text:#eef0ff; --muted:#9aa5d1;
+    --accent:#ffb86b; --accent-ink:#2a1a00; --violet:#8b7cf6; --me:#3b4a8f;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%}
+  body{
+    font-family:"Vazirmatn",system-ui,sans-serif;background:var(--bg);color:var(--text);
+    display:flex;flex-direction:column;
+    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+    background-image:radial-gradient(circle at 85% -10%,#2a3578 0,transparent 45%);
+  }
+  header{display:flex;align-items:center;gap:10px;padding:10px 14px}
+  header h1{font-size:17px;font-weight:800;flex:1}
+  .people{display:flex}
+  .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;
+      border:2px solid var(--bg);margin-inline-start:-8px;color:#fff}
+  .btn{border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;
+       background:var(--accent);color:var(--accent-ink)}
+  .btn.ghost{background:var(--panel2);color:var(--text)}
+  .btn:focus-visible,input:focus-visible{outline:3px solid var(--violet);outline-offset:2px}
+
+  .stage{margin:0 12px;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:16/9;position:relative;
+         box-shadow:0 8px 30px #0006}
+  .stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);
+         background:linear-gradient(160deg,#16204a,#0d1430);font-size:14px;line-height:1.9}
+  .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
+
+  .bar{display:flex;gap:8px;padding:10px 12px}
+  .bar input{flex:1;min-width:0}
+  input{font:inherit;background:var(--panel);color:var(--text);border:1px solid #2f3d72;border-radius:12px;padding:10px 12px;font-size:14px}
+  input::placeholder{color:#7783b3}
+  input[dir=ltr]{text-align:left}
+
+  .chat{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--panel);
+        border-radius:var(--radius) var(--radius) 0 0;margin:0 0 0;}
+  .msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .m{max-width:80%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.7;background:var(--panel2);align-self:flex-start;word-break:break-word}
+  .m small{display:block;color:var(--muted);font-size:11px}
+  .m.me{align-self:flex-end;background:var(--me)}
+  .m.sys{align-self:center;background:none;color:var(--muted);font-size:12px;padding:2px}
+  .send{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid #2a376a}
+  .send input{flex:1;min-width:0}
+
+  .join{position:fixed;inset:0;background:#0b1126ee;display:grid;place-items:center;padding:20px;z-index:10}
+  .join div{background:var(--panel);border-radius:20px;padding:22px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+  .join h2{font-size:20px}
+  .join p{color:var(--muted);font-size:13px;line-height:1.8}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);
+         padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.on{opacity:1}
+  @media (min-width:800px){
+    body{max-width:900px;margin:0 auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="join" id="join">
+  <div>
+    <h2>به اتاق خوش اومدی</h2>
+    <p>اسمت رو بنویس تا تو چت نشون داده بشه.</p>
+    <input id="nameIn" placeholder="اسم تو" maxlength="20" autocomplete="off">
+    <button class="btn" id="joinBtn">ورود به اتاق</button>
+  </div>
+</div>
+
+<header>
+  <h1>اتاق ما</h1>
+  <div class="people" id="people"></div>
+  <button class="btn ghost" id="copyBtn">کپی لینک</button>
+</header>
+
+<div class="stage" id="stage">
+  <div class="empty" id="empty"><div><b>هنوز ویدیویی پخش نمی‌شه</b>لینک یوتیوب رو پایین بذار و «پخش» رو بزن</div></div>
+</div>
+
+<div class="bar">
+  <input id="url" dir="ltr" placeholder="https://youtube.com/watch?v=..." inputmode="url" autocomplete="off">
+  <button class="btn" id="playBtn">پخش</button>
+</div>
+
+<section class="chat">
+  <div class="msgs" id="msgs"></div>
+  <form class="send" id="sendForm" onsubmit="return false">
+    <input id="msgIn" placeholder="یه پیام بنویس..." autocomplete="off">
+    <button class="btn" id="sendBtn" type="submit">ارسال</button>
+  </form>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  let me = "من";
+  const colors = ["#e0607e","#5b8def","#3fb68b","#c77dff"];
+
+  function renderPeople(names){
+    $("people").innerHTML = "";
+    names.forEach((n,i)=>{
+      const d = document.createElement("div");
+      d.className = "av"; d.title = n;
+      d.style.background = colors[i % colors.length];
+      d.textContent = n.trim().charAt(0).toUpperCase();
+      $("people").appendChild(d);
+    });
+  }
+
+  function addMsg(text, who){
+    const el = document.createElement("div");
+    if(who === "sys"){ el.className = "m sys"; el.textContent = text; }
+    else {
+      el.className = "m" + (who === me ? " me" : "");
+      const s = document.createElement("small"); s.textContent = who;
+      const t = document.createElement("span"); t.textContent = text;
+      el.append(s, t);
+    }
+    $("msgs").appendChild(el);
+    $("msgs").scrollTop = $("msgs").scrollHeight;
+  }
+
+  function toast(t){
+    $("toast").textContent = t; $("toast").classList.add("on");
+    setTimeout(()=>$("toast").classList.remove("on"), 1800);
+  }
+
+  function ytId(u){
+    const m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  $("joinBtn").onclick = () => {
+    me = $("nameIn").value.trim() || "من";
+    $("join").style.display = "none";
+    renderPeople([me]);
+    addMsg(me + " وارد اتاق شد", "sys");
+  };
+  $("nameIn").addEventListener("keydown", e => { if(e.key === "Enter") $("joinBtn").click(); });
+
+  $("playBtn").onclick = () => {
+    const id = ytId($("url").value.trim());
+    if(!id){ toast("لینک یوتیوب معتبر نیست"); return; }
+    $("stage").innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + id +
+      '?playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+    addMsg(me + " یه ویدیو گذاشت", "sys");
+  };
+
+  $("sendForm").addEventListener("submit", () => {
+    const t = $("msgIn").value.trim();
+    if(!t) return;
+    addMsg(t, me);
+    $("msgIn").value = "";
+  });
+
+  $("copyBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); toast("لینک کپی شد"); }
+    catch(e){ toast("لینک رو از نوار آدرس کپی کن"); }
+  };
+</script>
+</body>
+</html>
