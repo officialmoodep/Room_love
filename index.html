@@ -59,6 +59,7 @@ input::placeholder{color:var(--muted)}
 .empty .btn{margin-top:10px}
 .wrap{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .stage{margin:0 12px;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:16/9;position:relative;z-index:5;flex:none;box-shadow:0 8px 30px #0005}
+video::-webkit-media-controls-fullscreen-button{display:none}
 .stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);background:linear-gradient(160deg,var(--glow),var(--bg));font-size:14px;line-height:1.9}
 .empty b{display:block;color:var(--text);font-size:16px}
@@ -80,7 +81,7 @@ input::placeholder{color:var(--muted)}
 .hi b{display:block;font-size:14px;direction:ltr;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}.hi small{color:var(--muted);font-size:12px}.hi span{font-size:22px}.hi div{flex:1;min-width:0}
 .send{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid var(--line)}.send input{flex:1}
 .fab,.fs{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));width:42px;height:42px;border-radius:50%;border:0;background:var(--panel2);color:var(--text);font-size:18px;cursor:pointer;opacity:.5;z-index:6;display:none;place-items:center}
-.fab{right:calc(10px + env(safe-area-inset-right,0px))}.fs{display:grid;left:14px;top:10px;width:36px;height:36px;font-size:16px;background:#0008;color:#fff}
+.fab{right:calc(10px + env(safe-area-inset-right,0px))}.fs{display:grid;left:10px;top:10px;width:42px;height:42px;font-size:20px;background:#0009;color:#fff;opacity:.85}
 .fab.alert{opacity:1;background:var(--accent);color:var(--ink);animation:pulse 1.2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 80%,transparent)}70%,100%{box-shadow:0 0 0 16px transparent}}
 .fab i{position:absolute;top:-4px;left:-4px;min-width:18px;height:18px;border-radius:9px;background:#e5484d;color:#fff;font:700 11px/18px Vazirmatn,sans-serif;text-align:center;font-style:normal;display:none}
@@ -373,6 +374,7 @@ $("scrim").onclick = $("xBtn").onclick = closeChat;
 /* ---------- افقی / تمام‌صفحه ---------- */
 const mq = matchMedia("(orientation:landscape) and (max-height:520px)");
 let wasOv = false;
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 const reallyLandscape = () => {
   try{ if(screen.orientation && screen.orientation.type) return screen.orientation.type.startsWith("landscape"); }catch(e){}
   return screen.width > screen.height;
@@ -381,7 +383,7 @@ function updMode(){
   /* با باز شدن کیبورد ارتفاع صفحه کم می‌شه و ممکنه اشتباهاً «افقی» حساب بشه؛ جهت واقعی گوشی رو نگاه می‌کنیم */
   const ae = document.activeElement, typing = !!ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && !chat.contains(ae);
   if(typing && !wrap.classList.contains("ov")) return;
-  const ov = document.fullscreenElement === wrap || (mq.matches && reallyLandscape());
+  const ov = fsEl() === wrap || (mq.matches && reallyLandscape());
   wrap.classList.toggle("ov", ov); document.body.classList.toggle("ov", ov);
   if(wasOv && !ov) closeChat();
   wasOv = ov;
@@ -397,12 +399,17 @@ if(window.visualViewport){
   };
   vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit);
 }
-document.addEventListener("fullscreenchange", updMode); try{ screen.orientation.addEventListener("change", updMode); }catch(e){} addEventListener("resize", updMode); mq.addEventListener("change", updMode); updMode();
+document.addEventListener("fullscreenchange", updMode); document.addEventListener("webkitfullscreenchange", updMode); try{ screen.orientation.addEventListener("change", updMode); }catch(e){} addEventListener("resize", updMode); mq.addEventListener("change", updMode); updMode();
 $("fs").onclick = async () => {
   try{
-    if(document.fullscreenElement){ await document.exitFullscreen(); }
-    else { await wrap.requestFullscreen(); try{ await screen.orientation.lock("landscape"); }catch(e){} }
-  }catch(e){ toast("تمام‌صفحه پشتیبانی نمی‌شه"); }
+    if(fsEl()){ await (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+    else {
+      const rq = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+      if(!rq){ toast("این مرورگر تمام‌صفحه رو پشتیبانی نمی‌کنه"); return; }
+      await rq.call(wrap, { navigationUI: "hide" });
+      try{ await screen.orientation.lock("landscape"); }catch(e){}
+    }
+  }catch(e){ toast("تمام‌صفحه ممکن نشد (" + (e && e.name || "خطا") + ")"); console.error(e); }
 };
 
 /* حالت کیبورد: وقتی کادر پیام فوکوس داره، بقیه‌ی صفحه جمع می‌شه */
