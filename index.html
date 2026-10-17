@@ -1,197 +1,820 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" data-theme="cosmic" data-mode="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#111a33">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#111a33" id="tc">
 <meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>اتاق ما</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#111a33; --panel:#1a2547; --panel2:#223059; --text:#eef0ff; --muted:#9aa5d1;
-    --accent:#ffb86b; --accent-ink:#2a1a00; --violet:#8b7cf6; --me:#3b4a8f;
-    --radius:16px;
-  }
-  *{box-sizing:border-box;margin:0}
-  html,body{height:100%}
-  body{
-    font-family:"Vazirmatn",system-ui,sans-serif;background:var(--bg);color:var(--text);
-    display:flex;flex-direction:column;
-    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
-    background-image:radial-gradient(circle at 85% -10%,#2a3578 0,transparent 45%);
-  }
-  header{display:flex;align-items:center;gap:10px;padding:10px 14px}
-  header h1{font-size:17px;font-weight:800;flex:1}
-  .people{display:flex}
-  .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;
-      border:2px solid var(--bg);margin-inline-start:-8px;color:#fff}
-  .btn{border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;
-       background:var(--accent);color:var(--accent-ink)}
-  .btn.ghost{background:var(--panel2);color:var(--text)}
-  .btn:focus-visible,input:focus-visible{outline:3px solid var(--violet);outline-offset:2px}
+:root{--h:228;--accent:#ffb86b;--ink:#2a1a00}
+[data-theme=rose]{--h:335;--accent:#ff7aa8;--ink:#3a0018}
+[data-theme=mint]{--h:160;--accent:#5fd6a4;--ink:#00281a}
+[data-theme=ocean]{--h:203;--accent:#5cc8ff;--ink:#00263a}
+[data-theme=sunset]{--h:15;--accent:#ff8a5c;--ink:#3a1200}
+[data-mode=dark]{--bg:hsl(var(--h) 45% 12%);--panel:hsl(var(--h) 40% 17%);--panel2:hsl(var(--h) 36% 24%);--text:#eef0ff;--muted:hsl(var(--h) 25% 72%);--line:hsl(var(--h) 35% 28%);--glow:hsl(var(--h) 55% 26%);color-scheme:dark}
+[data-mode=night]{--bg:hsl(var(--h) 15% 3%);--panel:hsl(var(--h) 14% 8%);--panel2:hsl(var(--h) 12% 14%);--text:#d6d6dc;--muted:hsl(var(--h) 8% 58%);--line:hsl(var(--h) 10% 17%);--glow:hsl(var(--h) 20% 6%);color-scheme:dark}
+[data-mode=light]{--bg:hsl(var(--h) 45% 96%);--panel:hsl(var(--h) 35% 91%);--panel2:hsl(var(--h) 30% 85%);--text:#1b1f33;--muted:hsl(var(--h) 15% 38%);--line:hsl(var(--h) 25% 78%);--glow:hsl(var(--h) 70% 90%);color-scheme:light}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:"Vazirmatn",system-ui,sans-serif;background:var(--bg) radial-gradient(circle at 85% -10%,var(--glow) 0,transparent 45%) no-repeat;color:var(--text);display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body.ov{padding:0}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px}
+header h1{font-size:17px;font-weight:800;flex:1;white-space:nowrap}
+.people{display:flex}
+.pic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;background-size:cover;background-position:center;flex:none}
+.av{width:32px;height:32px;border:2px solid var(--bg);margin-inline-start:-8px}
+.btn{border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;background:var(--accent);color:var(--ink)}
+.btn.ghost{background:var(--panel2);color:var(--text)}
+.btn:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input{font:inherit;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;min-width:0}
+input::placeholder{color:var(--muted)}
+.call{display:flex;align-items:center;gap:8px;padding:8px 12px 0;flex:none}.call[hidden]{display:none}
+.tiles{display:flex;gap:8px;flex:1}
+.tiles video{width:72px;height:96px;object-fit:cover;border-radius:12px;background:#000;border:2px solid var(--line)}
+.tiles video.me{transform:scaleX(-1)}
+.ctl{display:flex;gap:6px}.ctl .btn.off{background:#e5484d;color:#fff}
+.ov .call{position:absolute;top:calc(56px + env(safe-area-inset-top,0px));left:10px;z-index:6;flex-direction:column;align-items:flex-start;padding:0}
+.ov .tiles{flex-direction:column;flex:none}.ov .tiles video{width:60px;height:80px}
+.spd{left:102px!important;font:700 12px Vazirmatn,sans-serif!important;direction:ltr}.cc{left:146px!important;font:700 12px Vazirmatn,sans-serif!important}
+.rx,.spd,.cc{position:absolute;top:10px;left:58px;width:36px;height:36px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:16px;opacity:.5;z-index:6;display:grid;place-items:center;cursor:pointer}
+.tray{position:absolute;top:52px;left:14px;display:none;flex-wrap:wrap;gap:4px;width:184px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px;z-index:8}.tray.on{display:flex}
+.tray.cct{width:250px;left:14px}.tray.cct button{width:auto;min-width:38px;padding:0 10px;font:600 13px Vazirmatn,sans-serif;color:var(--text);background:var(--panel2)}.tray.cct .info{width:100%;font-size:12px;color:var(--muted);text-align:center}
+#sub{position:absolute;left:6%;right:6%;bottom:12%;text-align:center;pointer-events:none;z-index:4;font-weight:700;color:#fff;text-shadow:0 0 4px #000,0 1px 3px #000,0 0 8px #000;line-height:1.7;white-space:pre-line;font-size:var(--subsz,16px)}
+.ov #sub{font-size:calc(var(--subsz,16px) * 1.4)}
+.tray button{width:38px;height:38px;border:0;background:none;font-size:22px;cursor:pointer;border-radius:10px}.tray button:active{background:var(--panel2)}
+.fly{position:absolute;bottom:14%;font-size:34px;line-height:1;text-align:center;pointer-events:none;z-index:5;animation:rise 2.2s ease-out forwards}
+.fly small{display:block;font-size:11px;color:#fff;text-shadow:0 1px 3px #000}
+@keyframes rise{from{opacity:1;transform:translateY(0) scale(.7)}20%{transform:translateY(-20px) scale(1.15)}to{opacity:0;transform:translateY(-140px) scale(1)}}
+@media(prefers-reduced-motion:reduce){.fly{animation:none}}
+.bar.off{display:none}
+.bar{display:flex;gap:8px;padding:0 12px 10px}.bar input{flex:1}.bar{flex-wrap:wrap}.bar #pickVid{white-space:nowrap}
+.empty .btn{margin-top:10px}
+.wrap{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+.stage{margin:0 12px;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:16/9;position:relative;z-index:5;flex:none;box-shadow:0 8px 30px #0005}
+.stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);background:linear-gradient(160deg,var(--glow),var(--bg));font-size:14px;line-height:1.9}
+.empty b{display:block;color:var(--text);font-size:16px}
+.chat{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--panel);border-radius:16px 16px 0 0;margin-top:10px}
+.chat.blink{animation:blink 1.3s}
+@keyframes blink{0%,100%{box-shadow:inset 0 0 0 0 transparent}25%{box-shadow:inset 0 3px 0 0 var(--accent),inset 0 18px 24px -14px var(--accent)}}
+.chat-head{display:none;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);font-weight:800;font-size:14px}.chat-head span{flex:1}
+.msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:6px;align-items:flex-end;max-width:90%;align-self:flex-start}
+.row.me{align-self:flex-end;flex-direction:row-reverse}
+.row.sys{align-self:center;color:var(--muted);font-size:12px}
+.m{padding:7px 12px;border-radius:14px;font-size:14px;line-height:1.7;background:var(--panel2);word-break:break-word}
+.me .m{background:color-mix(in srgb,var(--accent) 30%,var(--panel2))}
+.m small{display:block;color:var(--muted);font-size:11px}
+.typing{padding:0 14px 4px;font-size:12px;color:var(--accent);min-height:0}.typing[hidden]{display:none}
+.tk{font-size:11px;margin-inline-start:6px;opacity:.55;letter-spacing:-2px}.tk.read{opacity:1;color:var(--accent)}
+.hist{display:flex;flex-direction:column;gap:8px;max-height:50dvh;overflow:auto}
+.hi{display:flex;align-items:center;gap:10px;background:var(--panel2);border:0;color:var(--text);font:inherit;text-align:start;border-radius:14px;padding:10px 12px;cursor:pointer}
+.hi b{display:block;font-size:14px;direction:ltr;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}.hi small{color:var(--muted);font-size:12px}.hi span{font-size:22px}.hi div{flex:1;min-width:0}
+.send{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid var(--line)}.send input{flex:1}
+.fab,.fs{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));width:42px;height:42px;border-radius:50%;border:0;background:var(--panel2);color:var(--text);font-size:18px;cursor:pointer;opacity:.5;z-index:6;display:none;place-items:center}
+.fab{right:calc(10px + env(safe-area-inset-right,0px))}.fs{display:grid;left:14px;top:10px;width:36px;height:36px;font-size:16px;background:#0008;color:#fff}
+.fab.alert{opacity:1;background:var(--accent);color:var(--ink);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 80%,transparent)}70%,100%{box-shadow:0 0 0 16px transparent}}
+.fab i{position:absolute;top:-4px;left:-4px;min-width:18px;height:18px;border-radius:9px;background:#e5484d;color:#fff;font:700 11px/18px Vazirmatn,sans-serif;text-align:center;font-style:normal;display:none}
+.fab.alert i{display:block}
+.peek{position:absolute;top:calc(60px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));max-width:240px;background:var(--panel);color:var(--text);border:1px solid var(--accent);border-radius:14px;padding:8px 12px;font-size:13px;display:none;z-index:6}.peek.on{display:block}
+.scrim{position:absolute;inset:0;z-index:6;display:none}
+.ov .wrap{position:fixed;inset:0;z-index:5;background:#000}
+.ov .stage{position:absolute;inset:0;margin:0;border-radius:0;aspect-ratio:auto}
+.ov .chat{position:absolute;top:0;bottom:0;right:0;width:min(340px,72%);margin:0;border-radius:0;transform:translateX(105%);transition:transform .25s;z-index:7;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--panel) 94%,transparent)}
+.ov .chat.open{transform:none}.ov .chat-head{display:flex}.ov .fab{display:grid}.ov .chat.open~.fab{display:none}.ov .scrim.on{display:block}
+.ov .bar,.ov header{display:none}
+.sheet{position:fixed;inset:0;background:#0009;display:none;align-items:flex-end;justify-content:center;z-index:20}.sheet.on{display:flex}
+.card{background:var(--panel);width:100%;max-width:480px;max-height:90dvh;overflow:auto;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:12px}
+.srow{display:flex;gap:12px;align-items:center}.srow>div:last-child{flex:1;display:flex;flex-direction:column;gap:8px}.pic.big{width:64px;height:64px;font-size:26px}
+.lbl{font-size:13px;color:var(--muted)}
+.sw{display:flex;gap:12px}.sw button{width:38px;height:38px;border-radius:50%;border:0;cursor:pointer}.sw button[aria-pressed=true]{outline:3px solid var(--text);outline-offset:2px}
+.seg{display:flex;background:var(--panel2);border-radius:999px;padding:3px}.seg button{flex:1;border:0;background:none;color:var(--text);font:inherit;font-size:13px;padding:8px;border-radius:999px;cursor:pointer}.seg button[aria-pressed=true]{background:var(--accent);color:var(--ink);font-weight:700}
+.join{position:fixed;inset:0;background:#0b1126ee;display:grid;place-items:center;padding:20px;z-index:30}
+.join div{background:var(--panel);border-radius:20px;padding:22px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+.join section{display:flex;flex-direction:column;gap:12px}.join [hidden]{display:none}
+.join .code{font:800 32px/1 ui-monospace,monospace;letter-spacing:6px;text-align:center;direction:ltr;background:var(--panel2);padding:14px;border-radius:14px;color:var(--accent);user-select:all}
+.codein{text-align:center;letter-spacing:4px;font-size:20px;text-transform:uppercase}
+.join h2{font-size:20px}.join p{color:var(--muted);font-size:13px;line-height:1.8}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--ink);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}.toast.on{opacity:1}
 
-  .stage{margin:0 12px;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:16/9;position:relative;
-         box-shadow:0 8px 30px #0006}
-  .stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-  .empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);
-         background:linear-gradient(160deg,#16204a,#0d1430);font-size:14px;line-height:1.9}
-  .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
-
-  .bar{display:flex;gap:8px;padding:10px 12px}
-  .bar input{flex:1;min-width:0}
-  input{font:inherit;background:var(--panel);color:var(--text);border:1px solid #2f3d72;border-radius:12px;padding:10px 12px;font-size:14px}
-  input::placeholder{color:#7783b3}
-  input[dir=ltr]{text-align:left}
-
-  .chat{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--panel);
-        border-radius:var(--radius) var(--radius) 0 0;margin:0 0 0;}
-  .msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
-  .m{max-width:80%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.7;background:var(--panel2);align-self:flex-start;word-break:break-word}
-  .m small{display:block;color:var(--muted);font-size:11px}
-  .m.me{align-self:flex-end;background:var(--me)}
-  .m.sys{align-self:center;background:none;color:var(--muted);font-size:12px;padding:2px}
-  .send{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid #2a376a}
-  .send input{flex:1;min-width:0}
-
-  .join{position:fixed;inset:0;background:#0b1126ee;display:grid;place-items:center;padding:20px;z-index:10}
-  .join div{background:var(--panel);border-radius:20px;padding:22px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
-  .join h2{font-size:20px}
-  .join p{color:var(--muted);font-size:13px;line-height:1.8}
-  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);
-         padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
-  .toast.on{opacity:1}
-  @media (min-width:800px){
-    body{max-width:900px;margin:0 auto}
-  }
+/* ---------- تم ژانر ---------- */
+html[data-genre=horror]{--accent:#c4121a;--ink:#fff;--bg:#0a0405;--panel:#160709;--panel2:#240b0e;--text:#e8d5d5;--muted:#a07676;--line:#3a1013;--glow:#3a0508;color-scheme:dark}
+html[data-genre=romance]{--accent:#ff6b9d;--ink:#3a0018;--bg:#2a0f1f;--panel:#3b1429;--panel2:#54203a;--text:#ffe9f2;--muted:#e0a3bf;--line:#6b2a4a;--glow:#7a2650;color-scheme:dark}
+html[data-genre=war]{--accent:#c2ad4d;--ink:#1a1a05;--bg:#14160d;--panel:#1f2319;--panel2:#2f3424;--text:#e6e2cf;--muted:#a3a07f;--line:#3c422d;--glow:#2b3020;color-scheme:dark}
+html[data-genre=comedy]{--accent:#ff6b3d;--ink:#fff;--bg:#fff6d6;--panel:#ffe9a0;--panel2:#ffd966;--text:#3a2a00;--muted:#7a6320;--line:#e8c24a;--glow:#fff0a8;color-scheme:light}
+html[data-genre=scifi]{--accent:#19e3ff;--ink:#00222a;--bg:#040b18;--panel:#081a30;--panel2:#0e2a4a;--text:#dff6ff;--muted:#6fb6d6;--line:#124a6e;--glow:#06314f;color-scheme:dark}
+html[data-genre=action]{--accent:#ff7a00;--ink:#1a0a00;--bg:#120a05;--panel:#1d1108;--panel2:#2e1b0c;--text:#fff1e0;--muted:#c9955f;--line:#4a2b10;--glow:#4a1c05;color-scheme:dark}
+html[data-genre=fantasy]{--accent:#b98cff;--ink:#1d0a3a;--bg:#150b2b;--panel:#20123f;--panel2:#321d5e;--text:#f1e8ff;--muted:#b49be0;--line:#46297c;--glow:#3d1d7a;color-scheme:dark}
+html[data-genre=drama]{--accent:#7fa7cf;--ink:#04121f;--bg:#0f151c;--panel:#172029;--panel2:#223040;--text:#dde6ee;--muted:#8aa0b4;--line:#2c3d50;--glow:#1c2d40;color-scheme:dark}
+html[data-genre=thriller]{--accent:#8bd17c;--ink:#07200a;--bg:#080d0a;--panel:#101a14;--panel2:#1a2a20;--text:#d9e8dc;--muted:#7fa088;--line:#233a2b;--glow:#14261b;color-scheme:dark}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;transition:opacity .8s}
+html[data-genre] #fx{opacity:1}
+.ov #fx{z-index:0}
+html[data-genre=horror] #fx{background:radial-gradient(ellipse at center,transparent 35%,#000d 100%);animation:flick 5s infinite}
+@keyframes flick{0%,100%{opacity:1}46%{opacity:1}48%{opacity:.55}50%{opacity:1}52%{opacity:.7}54%{opacity:1}}
+html[data-genre=romance] #fx{background:radial-gradient(circle at 20% 110%,#ff6b9d44,transparent 40%),radial-gradient(circle at 85% 110%,#ff9ec144,transparent 40%);animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.55}}
+html[data-genre=war] #fx{background:repeating-linear-gradient(0deg,#0000 0 3px,#0003 3px 4px),radial-gradient(ellipse at center,transparent 40%,#000a 100%)}
+html[data-genre=comedy] #fx{background:radial-gradient(circle,#ff6b3d33 0 3px,transparent 4px) 0 0/46px 46px,radial-gradient(circle,#3da9ff33 0 3px,transparent 4px) 23px 23px/46px 46px}
+html[data-genre=scifi] #fx{background:linear-gradient(#19e3ff14 1px,transparent 1px) 0 0/36px 36px,linear-gradient(90deg,#19e3ff14 1px,transparent 1px) 0 0/36px 36px;animation:grid 6s linear infinite}
+@keyframes grid{to{background-position:0 36px,36px 0}}
+html[data-genre=action] #fx{background:repeating-linear-gradient(115deg,#ff7a0010 0 14px,transparent 14px 40px),radial-gradient(ellipse at center,transparent 50%,#000b 100%)}
+html[data-genre=fantasy] #fx{background:radial-gradient(circle,#fff9 0 1px,transparent 2px) 0 0/70px 70px,radial-gradient(circle,#b98cffcc 0 1.5px,transparent 2.5px) 35px 35px/90px 90px;animation:twinkle 3.5s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.35}}
+html[data-genre=drama] #fx{background:repeating-linear-gradient(100deg,#7fa7cf1a 0 1px,transparent 1px 22px);animation:rain 1.2s linear infinite}
+@keyframes rain{to{background-position:-30px 60px}}
+html[data-genre=thriller] #fx{background:radial-gradient(ellipse at center,transparent 30%,#000c 100%)}
+@media(prefers-reduced-motion:reduce){#fx{animation:none!important}}
+.gen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gen button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:14px;padding:12px 4px;font:inherit;font-size:13px;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center}
+.gen button span{font-size:26px;line-height:1}
+.gen button[aria-pressed=true]{border-color:var(--accent);outline:2px solid var(--accent)}
+@media(min-width:800px){body{max-width:900px;margin:0 auto}}
+@media(prefers-reduced-motion:reduce){.fab.alert,.chat.blink{animation:none}}
 </style>
 </head>
 <body>
+<div id="fx"></div>
 
-<div class="join" id="join">
-  <div>
-    <h2>به اتاق خوش اومدی</h2>
+<div class="join" id="join"><div>
+  <h2>به اتاق خوش اومدی</h2>
+  <section id="stepA">
     <p>اسمت رو بنویس تا تو چت نشون داده بشه.</p>
     <input id="nameIn" placeholder="اسم تو" maxlength="20" autocomplete="off">
-    <button class="btn" id="joinBtn">ورود به اتاق</button>
-  </div>
-</div>
+    <section id="choice"><button class="btn" id="createBtn">ساخت روم</button><button class="btn ghost" id="joinOpt">ورود به روم</button></section>
+    <section id="direct" hidden><button class="btn" id="directBtn">ورود به اتاق</button></section>
+  </section>
+  <section id="stepC" hidden>
+    <p>این کد رو کپی کن و برای پارتنرت بفرست تا با «ورود به روم» واردش کنه.</p>
+    <p class="code" id="codeBig"></p>
+    <button class="btn ghost" id="copyCodeBtn">کپی کد</button>
+    <button class="btn" id="enterBtn">ورود به اتاق</button>
+  </section>
+  <section id="stepJ" hidden>
+    <p>کدی که پارتنرت بهت داده رو وارد کن.</p>
+    <input id="codeIn" class="codein" dir="ltr" placeholder="مثلاً K7M2QX" maxlength="8" autocomplete="off" autocapitalize="characters">
+    <button class="btn" id="goBtn">ورود</button>
+    <button class="btn ghost" id="backBtn">برگشت</button>
+  </section>
+</div></div>
 
 <header>
   <h1>اتاق ما</h1>
   <div class="people" id="people"></div>
+  <button class="btn ghost" id="callBtn" aria-label="تماس">📞</button>
+  <button class="btn ghost" id="lock" aria-label="قفل لینک">🔓</button>
+  <button class="btn ghost" id="newVid" hidden>ویدیوی جدید</button>
+  <button class="btn ghost" id="genBtn" aria-label="ژانر فیلم">🎭</button>
+  <button class="btn ghost" id="histBtn" aria-label="تاریخچه‌ی ویدیوها">📜</button>
+  <button class="btn ghost" id="gear" aria-label="تنظیمات">⚙️</button>
   <button class="btn ghost" id="copyBtn">کپی لینک</button>
 </header>
 
-<div class="stage" id="stage">
-  <div class="empty" id="empty"><div><b>هنوز ویدیویی پخش نمی‌شه</b>لینک یوتیوب رو پایین بذار و «پخش» رو بزن</div></div>
-</div>
-
-<div class="bar">
+<div class="bar" id="bar">
   <input id="url" dir="ltr" placeholder="لینک یوتیوب یا لینک مستقیم mp4" inputmode="url" autocomplete="off">
   <button class="btn" id="playBtn">پخش</button>
+  <button class="btn ghost" id="pickVid">📁 فایل گوشی</button>
+  <input type="file" id="vidFile" accept="video/*,.mkv,.mp4,.webm,.mov" hidden>
 </div>
 
-<section class="chat">
-  <div class="msgs" id="msgs"></div>
-  <form class="send" id="sendForm" onsubmit="return false">
-    <input id="msgIn" placeholder="یه پیام بنویس..." autocomplete="off">
-    <button class="btn" id="sendBtn" type="submit">ارسال</button>
-  </form>
-</section>
+<div class="wrap" id="wrap">
+  <div class="stage" id="stage">
+    <div id="sub" dir="auto"></div>
+    <div class="empty"><div><b>هنوز ویدیویی پخش نمی‌شه</b>لینک رو بالا بذار و «پخش» رو بزن</div></div>
+  </div>
+  <div class="call" id="call" hidden><div class="tiles" id="tiles"></div>
+    <div class="ctl"><button class="btn ghost" id="mic" aria-label="میکروفون">🎤</button><button class="btn ghost" id="cam" aria-label="دوربین">📷</button><button class="btn" id="hang" style="background:#e5484d;color:#fff" aria-label="قطع تماس">☎️</button></div></div>
+  <button class="fs" id="fs" aria-label="تمام‌صفحه">⤢</button>
+  <button class="rx" id="rx" aria-label="واکنش">😊</button><div class="tray" id="tray"></div>
+  <button class="spd" id="spd" aria-label="سرعت پخش">1×</button>
+  <button class="cc" id="cc" aria-label="زیرنویس">CC</button>
+  <div class="tray cct" id="cct">
+    <div class="info" id="ccinfo">زیرنویس فقط روی گوشی خودته</div>
+    <button id="ccFile">📂 انتخاب فایل (srt / vtt)</button>
+    <button id="ccTog">روشن/خاموش</button>
+    <button id="ccSm">A−</button><button id="ccBg">A+</button>
+    <button id="ccEarly">⏪ ۰٫۵ث</button><button id="ccLate">⏩ ۰٫۵ث</button>
+    <input type="file" id="subFile" accept=".srt,.vtt,.txt,text/*" hidden>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <section class="chat" id="chat">
+    <div class="chat-head"><span>گفتگو</span><button class="btn ghost" id="gear2" aria-label="تنظیمات">⚙️</button><button class="btn ghost" id="xBtn" aria-label="بستن">✕</button></div>
+    <div class="msgs" id="msgs"></div>
+    <div class="typing" id="typing" hidden></div>
+    <form class="send" id="sendForm" onsubmit="return false">
+      <input id="msgIn" placeholder="یه پیام بنویس..." autocomplete="off" style="flex:1">
+      <button class="btn" type="submit">ارسال</button>
+    </form>
+  </section>
+  <button class="fab" id="fab" aria-label="گفتگو">💬<i id="badge">0</i></button>
+  <div class="peek" id="peek"></div>
 
-<div class="toast" id="toast"></div>
+  <div class="sheet" id="sheet"><div class="card">
+    <div class="srow"><div class="pic big" id="myPic"></div>
+      <div><input id="nameEdit" maxlength="20" placeholder="اسم تو"><button class="btn ghost" id="pickBtn">انتخاب عکس پروفایل</button></div></div>
+    <p class="lbl">کد اتاق</p><div class="srow"><b id="codeShow" style="flex:1;letter-spacing:3px;direction:ltr;text-align:right"></b><button class="btn ghost" id="copyCode2">کپی کد</button></div>
+    <p class="lbl">رنگ تم</p><div class="sw" id="sw"></div>
+    <p class="lbl">حالت نمایش</p>
+    <div class="seg" id="seg"><button data-m="light">روشن</button><button data-m="dark">تیره</button><button data-m="night">شب</button></div>
+    <button class="btn" id="closeSet">بستن</button>
+    <input type="file" id="file" accept="image/*" hidden>
+  </div></div>
+  <div class="sheet" id="gsheet"><div class="card">
+    <b>فیلمی که گذاشتی چه ژانری داره؟</b>
+    <p class="lbl">تم سایت برای هر دو نفر با ژانر عوض می‌شه</p>
+    <div class="gen" id="gen"></div>
+    <button class="btn ghost" id="gnone">بدون ژانر (تم عادی)</button>
+  </div></div>
+  <div class="sheet" id="hsheet"><div class="card">
+    <b>ویدیوهایی که تو این اتاق دیدین</b>
+    <div class="hist" id="hist"></div>
+    <button class="btn" id="hclose">بستن</button>
+  </div></div>
+  <div class="toast" id="toast"></div>
+</div>
 
-<script>
-  const $ = id => document.getElementById(id);
-  let me = "من";
-  const colors = ["#e0607e","#5b8def","#3fb68b","#c77dff"];
+<script type="module">
+const $ = id => document.getElementById(id);
+const LS = { get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } }, set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} } };
+const DB_URL = "https://love-room-600da-default-rtdb.firebaseio.com";
+let ROOM = location.hash.slice(1).toUpperCase().replace(/[^A-Z0-9]/g, "");
+const CID = LS.get("cid") || Math.random().toString(36).slice(2, 10); LS.set("cid", CID);
+const COLORS = ["#e0607e","#5b8def","#3fb68b","#c77dff","#e8a33d"];
+const THEMES = { cosmic:"#ffb86b", rose:"#ff7aa8", mint:"#5fd6a4", ocean:"#5cc8ff", sunset:"#ff8a5c" };
+let me = LS.get("name") || "من", theme = LS.get("theme") || "cosmic", mode = LS.get("mode") || "dark", avatar = LS.get("avatar") || "";
+let db, fb, serverOffset = 0, ignoreUntil = 0, currentUrl = "", profiles = {}, pres = {}, unread = 0, peekT;
+const wrap = $("wrap"), chat = $("chat");
 
-  function renderPeople(names){
-    $("people").innerHTML = "";
-    names.forEach((n,i)=>{
-      const d = document.createElement("div");
-      d.className = "av"; d.title = n;
-      d.style.background = colors[i % colors.length];
-      d.textContent = n.trim().charAt(0).toUpperCase();
-      $("people").appendChild(d);
-    });
+function toast(t){ $("toast").textContent = t; $("toast").classList.add("on"); setTimeout(() => $("toast").classList.remove("on"), 2200); }
+
+/* ---------- تم و حالت ---------- */
+function applyTheme(){
+  const r = document.documentElement; r.dataset.theme = theme; r.dataset.mode = mode;
+  $("tc").content = getComputedStyle(document.body).backgroundColor;
+  document.querySelectorAll("#sw button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === theme));
+  document.querySelectorAll("#seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === mode));
+}
+for(const [k, c] of Object.entries(THEMES)){
+  const b = document.createElement("button"); b.dataset.t = k; b.style.background = c; b.setAttribute("aria-label", k);
+  b.onclick = () => { theme = k; LS.set("theme", k); applyTheme(); };
+  $("sw").appendChild(b);
+}
+document.querySelectorAll("#seg button").forEach(b => b.onclick = () => { mode = b.dataset.m; LS.set("mode", mode); applyTheme(); });
+applyTheme();
+
+/* ---------- ژانر و تم ---------- */
+const GENRES = { horror:["😱","ترسناک"], romance:["❤️","عاشقانه"], war:["🪖","جنگی"], comedy:["😂","کمدی"], scifi:["🚀","علمی‌تخیلی"], action:["💥","اکشن"], fantasy:["🧙","فانتزی"], drama:["😢","درام"], thriller:["🕵️","معمایی"] };
+let genre = "";
+function applyGenre(k, announce){
+  k = GENRES[k] ? k : "";
+  if(k === genre) return; genre = k;
+  if(k) document.documentElement.dataset.genre = k; else delete document.documentElement.dataset.genre;
+  applyTheme();
+  document.querySelectorAll("#gen button").forEach(b => b.setAttribute("aria-pressed", b.dataset.g === k));
+  if(announce) toast(k ? "تم " + GENRES[k][1] + " " + GENRES[k][0] : "تم عادی");
+}
+for(const [k, [e, n]] of Object.entries(GENRES)){
+  const b = document.createElement("button"); b.dataset.g = k; b.setAttribute("aria-pressed", "false");
+  const i = document.createElement("span"); i.textContent = e; b.append(i, n);
+  b.onclick = () => setGenre(k); $("gen").appendChild(b);
+}
+function setGenre(k){
+  $("gsheet").classList.remove("on"); applyGenre(k, true);
+  if(db){
+    fb.set(fb.ref(db, `rooms/${ROOM}/genre`), k || null);
+    if(k) fb.push(fb.ref(db, `rooms/${ROOM}/chat`), { sys: true, text: me + " ژانر رو گذاشت: " + GENRES[k][1] + " " + GENRES[k][0], by: CID, t: fb.serverTimestamp() });
   }
+}
+const askGenre = () => $("gsheet").classList.add("on");
+$("gnone").onclick = () => setGenre("");
+$("genBtn").onclick = askGenre;
+$("gsheet").onclick = e => { if(e.target === $("gsheet")) $("gsheet").classList.remove("on"); };
 
-  function addMsg(text, who){
-    const el = document.createElement("div");
-    if(who === "sys"){ el.className = "m sys"; el.textContent = text; }
-    else {
-      el.className = "m" + (who === me ? " me" : "");
-      const s = document.createElement("small"); s.textContent = who;
-      const t = document.createElement("span"); t.textContent = text;
-      el.append(s, t);
-    }
-    $("msgs").appendChild(el);
-    $("msgs").scrollTop = $("msgs").scrollHeight;
+/* ---------- آواتار و افراد ---------- */
+function paint(el, cid, name){
+  const p = profiles[cid] || {};
+  el.style.backgroundColor = COLORS[[...String(cid)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+  if(p.avatar){ el.style.backgroundImage = `url(${p.avatar})`; el.textContent = ""; }
+  else { el.style.backgroundImage = "none"; el.textContent = (p.name || name || "?").trim().charAt(0).toUpperCase(); }
+}
+const repaint = () => document.querySelectorAll("[data-by]").forEach(e => paint(e, e.dataset.by, e.dataset.n));
+function renderPeople(){
+  const box = $("people"); box.innerHTML = "";
+  for(const [cid, n] of Object.entries(pres)){
+    const d = document.createElement("div"); d.className = "pic av"; d.dataset.by = cid; d.dataset.n = n; d.title = n;
+    paint(d, cid, n); box.appendChild(d);
   }
-
-  function toast(t){
-    $("toast").textContent = t; $("toast").classList.add("on");
-    setTimeout(()=>$("toast").classList.remove("on"), 1800);
+}
+function saveProfile(){
+  profiles[CID] = { name: me, avatar: avatar || null }; repaint(); paint($("myPic"), CID, me);
+  if(db){
+    fb.set(fb.ref(db, `rooms/${ROOM}/profiles/${CID}`), { name: me, avatar: avatar || null });
+    fb.set(fb.ref(db, `rooms/${ROOM}/presence/${CID}`), { name: me });
   }
+}
 
-  function ytId(u){
-    const m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
-    return m ? m[1] : null;
+/* ---------- چت ---------- */
+function addMsg(m, key){
+  const el = document.createElement("div");
+  if(m.sys){ el.className = "row sys"; el.textContent = m.text; }
+  else {
+    el.className = "row" + (m.by === CID ? " me" : "");
+    const pic = document.createElement("div"); pic.className = "pic"; pic.dataset.by = m.by; pic.dataset.n = m.name; paint(pic, m.by, m.name);
+    const b = document.createElement("div"); b.className = "m";
+    const s = document.createElement("small"); s.textContent = m.name;
+    const t = document.createElement("span"); t.textContent = m.text;
+    b.append(s, t);
+    if(m.by === CID && key){ el.dataset.k = key; const k = document.createElement("span"); k.className = "tk"; k.textContent = "✓"; b.appendChild(k); }
+    el.append(pic, b);
   }
+  $("msgs").appendChild(el); $("msgs").scrollTop = $("msgs").scrollHeight;
+}
+const serverNow = () => Date.now() + serverOffset;
+function openChat(){
+  chat.classList.add("open"); markReadSoon(); $("scrim").classList.add("on"); unread = 0;
+  $("fab").classList.remove("alert"); $("peek").classList.remove("on");
+  $("msgs").scrollTop = $("msgs").scrollHeight; setTimeout(() => $("msgIn").focus(), 280);
+}
+function closeChat(){ chat.classList.remove("open"); $("scrim").classList.remove("on"); $("msgIn").blur(); }
+function notify(m){
+  if((m.sys && !m.call) || m.by === CID || !m.t || serverNow() - m.t > 5000) return;
+  try{ navigator.vibrate && navigator.vibrate(60); }catch(e){}
+  if(wrap.classList.contains("ov")){
+    if(chat.classList.contains("open")) return;
+    $("badge").textContent = ++unread; $("fab").classList.add("alert");
+    $("peek").textContent = m.call ? m.text : m.name + ": " + m.text; $("peek").classList.add("on");
+    clearTimeout(peekT); peekT = setTimeout(() => $("peek").classList.remove("on"), 3500);
+  } else { chat.classList.remove("blink"); void chat.offsetWidth; chat.classList.add("blink"); }
+}
+$("fab").onclick = $("peek").onclick = openChat;
+$("scrim").onclick = $("xBtn").onclick = closeChat;
 
-  $("joinBtn").onclick = () => {
-    me = $("nameIn").value.trim() || "من";
-    $("join").style.display = "none";
-    renderPeople([me]);
-    addMsg(me + " وارد اتاق شد", "sys");
+/* ---------- افقی / تمام‌صفحه ---------- */
+const mq = matchMedia("(orientation:landscape) and (max-height:520px)");
+function updMode(){
+  const ov = document.fullscreenElement === wrap || mq.matches;
+  wrap.classList.toggle("ov", ov); document.body.classList.toggle("ov", ov);
+  if(!ov) closeChat();
+}
+document.addEventListener("fullscreenchange", updMode); addEventListener("resize", updMode); mq.addEventListener("change", updMode); updMode();
+$("fs").onclick = async () => {
+  try{
+    if(document.fullscreenElement){ await document.exitFullscreen(); }
+    else { await wrap.requestFullscreen(); try{ await screen.orientation.lock("landscape"); }catch(e){} }
+  }catch(e){ toast("تمام‌صفحه پشتیبانی نمی‌شه"); }
+};
+
+/* ---------- پخش هماهنگ ---------- */
+const getVideo = () => $("stage").querySelector("video");
+const ytId = u => { const m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
+function sendState(){
+  const v = getVideo();
+  if(!v || !db || bufHold || Date.now() < ignoreUntil) return;
+  fb.set(fb.ref(db, `rooms/${ROOM}/video`), { url: currentUrl, playing: !v.paused, time: v.currentTime, rate: v.playbackRate || 1, ts: fb.serverTimestamp(), by: CID });
+}
+function videoLoaded(){ $("bar").classList.add("off"); $("newVid").hidden = false; $("url").value = ""; }
+let localFile = null, pendingLocal = null;
+/* ---------- صبر برای بافر ---------- */
+let bufHold = false, heldWasPlaying = false, myBuf = false, bufT = null, others = {};
+function setMyBuf(on){
+  if(myBuf === on) return; myBuf = on;
+  if(db){ const r = fb.ref(db, `rooms/${ROOM}/buf/${CID}`); on ? fb.set(r, me) : fb.remove(r); }
+}
+function updHold(){
+  const v = getVideo(); if(!v) return;
+  const names = Object.values(others);
+  if(names.length && !bufHold){
+    heldWasPlaying = !v.paused; bufHold = true; ignoreUntil = Date.now() + 1500;
+    if(heldWasPlaying) v.pause();
+    toast("⏳ منتظر " + names[0] + " می‌مونیم تا ویدیو بافر بشه");
+  } else if(!names.length && bufHold){
+    ignoreUntil = Date.now() + 1500; bufHold = false;
+    if(heldWasPlaying && !myBuf) v.play().catch(() => {});
+    heldWasPlaying = false;
+  }
+}
+function watchBuf(v){
+  v.addEventListener("waiting", () => { clearTimeout(bufT); bufT = setTimeout(() => { if(v.readyState < 3) setMyBuf(true); }, 500); });
+  ["playing", "canplay", "canplaythrough", "seeked"].forEach(e => v.addEventListener(e, () => { clearTimeout(bufT); if(v.readyState >= 3) setMyBuf(false); }));
+}
+const isLocal = u => typeof u === "string" && u.startsWith("local:");
+const localSize = u => u.split(":")[1];
+const localName = u => u.split(":").slice(2).join(":");
+function showDirect(url){ return showVideo(url, url); }
+function showVideo(src, key){
+  currentUrl = key; videoLoaded();
+  const v = document.createElement("video");
+  v.src = src; v.controls = true; v.playsInline = true; v.preload = "auto"; v.setAttribute("controlslist", "nofullscreen");
+  v.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000";
+  ["play", "pause", "seeked", "ratechange"].forEach(e => v.addEventListener(e, sendState));
+  v.addEventListener("ratechange", () => { $("spd").textContent = v.playbackRate + "×"; });
+  v.addEventListener("timeupdate", () => savePos(key, v));
+  v.addEventListener("pause", () => savePos(key, v, true));
+  watchBuf(v); bufHold = false; others = {}; setMyBuf(false);
+  v.addEventListener("error", () => toast(isLocal(key) ? "این فرمت فایل روی این گوشی پخش نمی‌شه" : "ویدیو باز نشد؛ شاید لینک منقضی شده"));
+  $("stage").querySelectorAll("video,iframe,.empty").forEach(e => e.remove());
+  $("stage").prepend(v); return v;
+}
+function applyRemote(s){
+  if(!s || s.by === CID || !s.url) return;
+  if(s.playing && serverNow() - s.ts > 15000) s = { ...s, playing: false };
+  let v = getVideo();
+  if(isLocal(s.url)){
+    if(!localFile || localSize(localFile.key) !== localSize(s.url)){ askLocal(s); return; }
+    pendingLocal = null;
+    if(!v || currentUrl !== localFile.key) v = showVideo(localFile.obj, localFile.key);
+  } else if(!v || currentUrl !== s.url) v = showDirect(s.url);
+  const go = () => {
+    ignoreUntil = Date.now() + 1200;
+    const rate = s.rate || 1;
+    if(Math.abs(v.playbackRate - rate) > 0.01) v.playbackRate = rate;
+    const target = s.playing ? s.time + Math.max(0, (serverNow() - s.ts) / 1000) * rate : s.time;
+    if(Math.abs(v.currentTime - target) > 0.6) v.currentTime = target;
+    if(bufHold){ heldWasPlaying = s.playing; return; }
+    if(s.playing && v.paused) v.play().catch(() => toast("روی ویدیو بزن تا پخش شروع بشه"));
+    if(!s.playing && !v.paused) v.pause();
   };
-  $("nameIn").addEventListener("keydown", e => { if(e.key === "Enter") $("joinBtn").click(); });
+  if(v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true });
+}
 
-  // این تابع بعداً به Firebase وصل می‌شه تا پلی/پاز/جلو زدن به پارتنرت برسه
-  function syncSend(action, time){ console.log("sync:", action, time); }
-
-  function showDirect(url){
-    const v = document.createElement("video");
-    v.src = url; v.controls = true; v.playsInline = true; v.preload = "metadata";
-    v.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000";
-    v.addEventListener("play",   () => syncSend("play",  v.currentTime));
-    v.addEventListener("pause",  () => syncSend("pause", v.currentTime));
-    v.addEventListener("seeked", () => syncSend("seek",  v.currentTime));
-    v.addEventListener("error",  () => toast("ویدیو باز نشد؛ شاید لینک منقضی شده"));
-    $("stage").innerHTML = "";
-    $("stage").appendChild(v);
+function askLocal(s){
+  pendingLocal = s; currentUrl = "";
+  $("stage").querySelectorAll("video,iframe,.empty").forEach(e => e.remove());
+  const d = document.createElement("div"); d.className = "empty";
+  const i = document.createElement("div"), b = document.createElement("b");
+  b.textContent = "پارتنرت یه فیلم از گوشی‌ش گذاشت";
+  const t = document.createElement("span"); t.textContent = localName(s.url);
+  const br = document.createElement("br");
+  const btn = document.createElement("button"); btn.className = "btn"; btn.textContent = "📁 همون فایل رو از گوشیت انتخاب کن";
+  btn.onclick = () => $("vidFile").click();
+  i.append(b, t, br, btn); d.appendChild(i); $("stage").prepend(d);
+}
+function pickLocal(f){
+  const key = "local:" + f.size + ":" + f.name.replace(/[:|]/g, "_");
+  if(pendingLocal && localSize(pendingLocal.url) !== String(f.size)){ toast("این فایل با فایل پارتنرت یکی نیست (حجمش فرق داره)"); return; }
+  if(localFile) URL.revokeObjectURL(localFile.obj);
+  localFile = { key, obj: URL.createObjectURL(f) };
+  if(pendingLocal){ applyRemote(pendingLocal); return; }
+  const lv = showVideo(localFile.obj, key), t0 = resumeFor(key, lv);
+  if(db){
+    fb.set(fb.ref(db, `rooms/${ROOM}/video`), { url: key, playing: false, time: t0, ts: fb.serverTimestamp(), by: CID });
+    fb.push(fb.ref(db, `rooms/${ROOM}/chat`), { sys: true, text: me + " یه فیلم از گوشی‌ش گذاشت؛ تو هم همون فایل رو انتخاب کن", by: CID, t: fb.serverTimestamp() });
   }
+  addHistory(key); askGenre();
+}
 
-  $("playBtn").onclick = () => {
-    const u = $("url").value.trim();
-    if(!u){ toast("اول یه لینک بذار"); return; }
-    const id = ytId(u);
-    if(id){
-      $("stage").innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + id +
-        '?playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
-    } else if(/aparat\.com\/v\//.test(u)){
-      toast("این لینک صفحه‌ست؛ لینک مستقیم mp4 بذار"); return;
-    } else if(/^https?:\/\//.test(u)){
-      showDirect(u);
-    } else { toast("لینک معتبر نیست"); return; }
-    addMsg(me + " یه ویدیو گذاشت", "sys");
-  };
+/* ---------- ادامه از همون‌جا ---------- */
+let lastSave = 0;
+function savePos(key, v, force){
+  if(!force && Date.now() - lastSave < 3000) return;
+  if(!v.currentTime || !isFinite(v.duration)) return; lastSave = Date.now();
+  LS.set("pos:" + key, v.duration - v.currentTime < 30 ? "0" : String(Math.floor(v.currentTime)));
+}
+const fmtT = t => { t = Math.floor(t); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0"); };
+function resumeFor(key, v){
+  const t = Number(LS.get("pos:" + key)) || 0;
+  if(t < 10) return 0;
+  const go = () => { v.currentTime = t; toast("ادامه از " + fmtT(t)); };
+  if(v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true });
+  return t;
+}
+setInterval(() => { const v = getVideo(); if(v && !v.paused && !bufHold && !myBuf) sendState(); }, 5000);
+addEventListener("pagehide", () => { const v = getVideo(); if(v) savePos(currentUrl, v, true); });
 
-  $("sendForm").addEventListener("submit", () => {
-    const t = $("msgIn").value.trim();
-    if(!t) return;
-    addMsg(t, me);
-    $("msgIn").value = "";
+/* ---------- سرعت پخش ---------- */
+const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
+$("spd").onclick = () => {
+  const v = getVideo(); if(!v){ toast("اول ویدیو بذار"); return; }
+  const i = RATES.indexOf(v.playbackRate);
+  v.playbackRate = RATES[(i + 1) % RATES.length];
+};
+
+/* ---------- زیرنویس ---------- */
+let cues = [], subOn = true, subSize = Number(LS.get("subsz")) || 16, subDelay = 0;
+document.documentElement.style.setProperty("--subsz", subSize + "px");
+const tcs = t => { const m = t.trim().match(/^(?:(\d+):)?(\d+):(\d+)[,.](\d+)$/); return m ? (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4].padEnd(3, "0").slice(0, 3)) / 1000 : NaN; };
+function parseSubs(txt){
+  txt = txt.replace(/^\uFEFF/, "").replace(/\r/g, "");
+  const out = [];
+  for(const blk of txt.split(/\n\s*\n/)){
+    const L = blk.split("\n"), i = L.findIndex(l => l.includes("-->")); if(i < 0) continue;
+    const [a, b] = L[i].split("-->"), st = tcs(a), en = tcs(b.trim().split(/\s+/)[0]);
+    const t = L.slice(i + 1).join("\n").replace(/<[^>]+>/g, "").replace(/\{\\[^}]*\}/g, "").trim();
+    if(isFinite(st) && isFinite(en) && t) out.push({ s: st, e: en, t });
+  }
+  return out;
+}
+async function readSubs(f){
+  const buf = await f.arrayBuffer();
+  try{ return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+  catch(e){ return new TextDecoder("windows-1256").decode(buf); }
+}
+function updInfo(){ $("ccinfo").textContent = cues.length ? `زیرنویس ${subOn ? "روشن" : "خاموش"} · اندازه ${subSize} · تاخیر ${subDelay > 0 ? "+" : ""}${subDelay}ث` : "زیرنویس فقط روی گوشی خودته"; }
+function tickSub(){
+  const v = getVideo(), el = $("sub");
+  if(!v || !subOn || !cues.length){ if(el.textContent) el.textContent = ""; return; }
+  const t = v.currentTime - subDelay, c = cues.find(c => t >= c.s && t <= c.e);
+  const x = c ? c.t : ""; if(el.textContent !== x) el.textContent = x;
+}
+setInterval(tickSub, 150);
+$("cc").onclick = () => { $("cct").classList.toggle("on"); clearTimeout(window._ct); window._ct = setTimeout(() => $("cct").classList.remove("on"), 8000); updInfo(); };
+$("ccFile").onclick = () => $("subFile").click();
+$("subFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  const c = parseSubs(await readSubs(f));
+  if(!c.length){ toast("زیرنویس خونده نشد؛ فرمت srt یا vtt بده"); return; }
+  cues = c; subOn = true; subDelay = 0; updInfo(); toast("زیرنویس اضافه شد (" + c.length + " خط)");
+};
+$("ccTog").onclick = () => { subOn = !subOn; updInfo(); tickSub(); };
+const setSz = d => { subSize = Math.min(40, Math.max(10, subSize + d)); LS.set("subsz", subSize); document.documentElement.style.setProperty("--subsz", subSize + "px"); updInfo(); };
+$("ccSm").onclick = () => setSz(-2); $("ccBg").onclick = () => setSz(2);
+$("ccEarly").onclick = () => { subDelay = Math.round((subDelay - 0.5) * 10) / 10; updInfo(); };
+$("ccLate").onclick = () => { subDelay = Math.round((subDelay + 0.5) * 10) / 10; updInfo(); };
+
+/* ---------- تیک خونده‌شدن و در حال تایپ ---------- */
+let lastKey = "", myRead = "", othersRead = "", readT, typingOn = false, typT;
+function updTicks(){
+  document.querySelectorAll(".row.me[data-k]").forEach(r => {
+    const t = r.querySelector(".tk"), rd = othersRead && r.dataset.k <= othersRead;
+    t.textContent = rd ? "✓✓" : "✓"; t.classList.toggle("read", !!rd);
   });
+}
+function markRead(){
+  if(!db || !lastKey || lastKey === myRead || document.hidden) return;
+  if(wrap.classList.contains("ov") && !chat.classList.contains("open")) return;
+  myRead = lastKey; fb.set(fb.ref(db, `rooms/${ROOM}/read/${CID}`), lastKey);
+}
+function markReadSoon(){ clearTimeout(readT); readT = setTimeout(markRead, 400); }
+document.addEventListener("visibilitychange", markReadSoon); addEventListener("focus", markReadSoon);
+function setTyping(on){
+  if(!db) return; clearTimeout(typT);
+  if(on){ typT = setTimeout(() => setTyping(false), 3000); if(typingOn) return; }
+  else if(!typingOn) return;
+  typingOn = on; const r = fb.ref(db, `rooms/${ROOM}/typing/${CID}`); on ? fb.set(r, me) : fb.remove(r);
+}
+$("msgIn").addEventListener("input", () => setTyping(!!$("msgIn").value.trim()));
+$("msgIn").addEventListener("blur", () => setTyping(false));
 
-  $("copyBtn").onclick = async () => {
-    try { await navigator.clipboard.writeText(location.href); toast("لینک کپی شد"); }
-    catch(e){ toast("لینک رو از نوار آدرس کپی کن"); }
+/* ---------- تاریخچه‌ی ویدیوها ---------- */
+const hist = [], histUrls = new Set();
+const titleOf = u => { if(isLocal(u)) return localName(u); try{ const x = new URL(u); return x.hostname + decodeURIComponent(x.pathname).slice(0, 40); }catch(e){ return u.slice(0, 50); } };
+function renderHist(){
+  const box = $("hist"); box.innerHTML = "";
+  if(!hist.length){ const p = document.createElement("p"); p.className = "lbl"; p.textContent = "هنوز ویدیویی نذاشتین"; box.appendChild(p); return; }
+  for(const h of hist){
+    const b = document.createElement("button"); b.className = "hi";
+    const ic = document.createElement("span"); ic.textContent = isLocal(h.url) ? "📁" : "🔗";
+    const d = document.createElement("div"), t = document.createElement("b"), sm = document.createElement("small");
+    t.textContent = titleOf(h.url);
+    const pos = Number(LS.get("pos:" + h.url)) || 0;
+    sm.textContent = (h.name || "") + (pos >= 10 ? " · ادامه از " + fmtT(pos) : "") + (isLocal(h.url) ? " · باید فایل رو انتخاب کنی" : "");
+    d.append(t, sm); b.append(ic, d);
+    b.onclick = () => {
+      $("hsheet").classList.remove("on");
+      if(locked){ toast("لینک قفله"); return; }
+      if(isLocal(h.url)){ $("vidFile").click(); }
+      else { $("url").value = h.url; $("playBtn").click(); }
+    };
+    box.appendChild(b);
+  }
+}
+function addHistory(url){
+  if(!db || histUrls.has(url)) return;
+  histUrls.add(url);
+  fb.push(fb.ref(db, `rooms/${ROOM}/history`), { url, name: me, by: CID, t: fb.serverTimestamp() });
+}
+$("histBtn").onclick = () => { renderHist(); $("hsheet").classList.add("on"); };
+$("hclose").onclick = () => $("hsheet").classList.remove("on");
+$("hsheet").onclick = e => { if(e.target === $("hsheet")) $("hsheet").classList.remove("on"); };
+
+/* ---------- Firebase ---------- */
+async function initDb(){
+  if(db) return true;
+  try{
+    const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+    const [app, rtdb] = await Promise.all([import(base + "firebase-app.js"), import(base + "firebase-database.js")]);
+    fb = rtdb; db = rtdb.getDatabase(app.initializeApp({ databaseURL: DB_URL })); return true;
+  }catch(e){ toast("اتصال به سرور برقرار نشد"); console.error(e); return false; }
+}
+async function connect(){
+  if(!(await initDb())) return;
+  const R = p => fb.ref(db, `rooms/${ROOM}/${p}`);
+  fb.onValue(fb.ref(db, ".info/serverTimeOffset"), s => { serverOffset = s.val() || 0; });
+  fb.onValue(R("profiles"), s => { profiles = s.val() || {}; repaint(); });
+  const me_ = R("presence/" + CID);
+  fb.set(me_, { name: me }); fb.onDisconnect(me_).remove();
+  fb.onValue(R("presence"), s => { pres = {}; for(const [k, v] of Object.entries(s.val() || {})) pres[k] = v.name; renderPeople(); });
+  fb.onChildAdded(fb.query(R("chat"), fb.limitToLast(50)), s => { const m = s.val(); addMsg(m, s.key); notify(m); lastKey = s.key; markReadSoon(); });
+  fb.onValue(R("read"), s => { let mx = ""; for(const [k, v] of Object.entries(s.val() || {})) if(k !== CID && v > mx) mx = v; othersRead = mx; updTicks(); });
+  const ty = R("typing/" + CID); fb.onDisconnect(ty).remove();
+  fb.onValue(R("typing"), s => { const n = Object.entries(s.val() || {}).filter(([k]) => k !== CID).map(([, v]) => v); const el = $("typing"); el.hidden = !n.length; el.textContent = n.length ? n.join("، ") + " در حال تایپ..." : ""; if(n.length) $("msgs").scrollTop = $("msgs").scrollHeight; });
+  fb.onChildAdded(fb.query(R("history"), fb.limitToLast(30)), s => { const h = s.val(); histUrls.add(h.url); hist.unshift(h); renderHist(); });
+  saveProfile();
+  fb.push(R("chat"), { sys: true, text: me + " وارد اتاق شد", by: CID, t: fb.serverTimestamp() });
+  fb.onChildAdded(fb.query(R("react"), fb.limitToLast(5)), s => { const m = s.val(); if(m.t && serverNow() - m.t < 4000) fly(m); });
+  fb.onDisconnect(R("buf/" + CID)).remove();
+  fb.onValue(R("buf"), s => { others = {}; for(const [k, n] of Object.entries(s.val() || {})) if(k !== CID) others[k] = n; updHold(); });
+  fb.onValue(R("genre"), s => applyGenre(s.val() || "", true));
+  fb.onValue(R("video"), s => applyRemote(s.val()));
+}
+
+/* ---------- تماس تصویری و صدا ---------- */
+const RR = p => fb.ref(db, `rooms/${ROOM}/${p}`);
+const peers = {}; let stream = null, inCall = false, unsubs = [];
+const ICE = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }] };
+const sig = (to, o) => fb.push(RR("call/signals/" + to), { from: CID, ...o });
+function tile(id, src, mine){
+  let v = document.getElementById("t_" + id);
+  if(!v){ v = document.createElement("video"); v.id = "t_" + id; v.autoplay = true; v.playsInline = true; v.muted = !!mine; if(mine) v.className = "me"; $("tiles").appendChild(v); }
+  v.srcObject = src; return v;
+}
+function dropPeer(id){ if(peers[id]){ peers[id].close(); delete peers[id]; } const v = document.getElementById("t_" + id); if(v) v.remove(); }
+function mkPeer(id){
+  const pc = new RTCPeerConnection(ICE); peers[id] = pc;
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  pc.onicecandidate = e => { if(e.candidate) sig(id, { type: "ice", data: e.candidate.toJSON() }); };
+  pc.ontrack = e => tile(id, e.streams[0]);
+  pc.onconnectionstatechange = () => { if(pc.connectionState === "failed") toast("اتصال تماس برقرار نشد"); };
+  return pc;
+}
+async function flush(pc){ for(const c of pc._q || []) await pc.addIceCandidate(c).catch(() => {}); pc._q = []; }
+async function onSignal(m){
+  if(!inCall) return;
+  const pc = peers[m.from] || mkPeer(m.from);
+  if(m.type === "offer"){
+    await pc.setRemoteDescription(m.data); await flush(pc);
+    const a = await pc.createAnswer(); await pc.setLocalDescription(a);
+    sig(m.from, { type: "answer", data: { type: a.type, sdp: a.sdp } });
+  } else if(m.type === "answer"){ await pc.setRemoteDescription(m.data); await flush(pc); }
+  else if(m.type === "ice"){ if(pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pc._q = pc._q || []).push(m.data); }
+}
+async function offerTo(id){
+  dropPeer(id);
+  const pc = mkPeer(id), o = await pc.createOffer(); await pc.setLocalDescription(o);
+  sig(id, { type: "offer", data: { type: o.type, sdp: o.sdp } });
+}
+async function startCall(){
+  if(!db){ toast("اول وارد اتاق شو"); return; }
+  try{ stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 640 } } }); }
+  catch(e){ try{ stream = await navigator.mediaDevices.getUserMedia({ audio: true }); toast("دوربین در دسترس نیست؛ فقط صدا"); }catch(e2){ toast("اجازه‌ی میکروفون داده نشد"); return; } }
+  inCall = true; $("call").hidden = false; $("callBtn").classList.remove("ghost"); tile("me", stream, true);
+  const sg = RR("call/signals/" + CID); await fb.remove(sg);
+  unsubs.push(fb.onChildAdded(sg, s => { const m = s.val(); fb.remove(s.ref); onSignal(m).catch(console.error); }));
+  const mem = RR("call/members/" + CID); fb.set(mem, true); fb.onDisconnect(mem).remove();
+  unsubs.push(fb.onChildAdded(RR("call/members"), s => { if(s.key !== CID && CID > s.key) offerTo(s.key).catch(console.error); }));
+  unsubs.push(fb.onChildRemoved(RR("call/members"), s => dropPeer(s.key)));
+  fb.push(RR("chat"), { sys: true, call: true, text: "📞 " + me + " وارد تماس شد", by: CID, t: fb.serverTimestamp() });
+}
+function endCall(){
+  inCall = false; unsubs.forEach(u => u()); unsubs = [];
+  Object.keys(peers).forEach(dropPeer);
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $("tiles").innerHTML = ""; $("call").hidden = true; $("callBtn").classList.add("ghost");
+  $("mic").classList.remove("off"); $("mic").textContent = "🎤"; $("cam").classList.remove("off"); $("cam").textContent = "📷";
+  if(db) fb.remove(RR("call/members/" + CID));
+}
+function toggleTrack(kind, btn, on, off){
+  const t = stream && stream[kind]()[0]; if(!t) return;
+  t.enabled = !t.enabled; btn.classList.toggle("off", !t.enabled); btn.textContent = t.enabled ? on : off;
+}
+$("mic").onclick = () => toggleTrack("getAudioTracks", $("mic"), "🎤", "🔇");
+$("cam").onclick = () => toggleTrack("getVideoTracks", $("cam"), "📷", "🚫");
+$("hang").onclick = endCall;
+$("callBtn").onclick = () => inCall ? endCall() : startCall();
+
+/* ---------- واکنش‌ها ---------- */
+const EMO = ["❤️","😂","😮","😱","😢","😡","👏","🔥","😍","🥰","🙈","😴"];
+EMO.forEach(e => { const b = document.createElement("button"); b.textContent = e; b.onclick = () => { sendReact(e); $("tray").classList.remove("on"); }; $("tray").appendChild(b); });
+$("rx").onclick = () => { $("tray").classList.toggle("on"); clearTimeout(window._tt); window._tt = setTimeout(() => $("tray").classList.remove("on"), 5000); };
+function sendReact(e){
+  if(!db) return;
+  const r = fb.push(RR("react"), { e, name: me, by: CID, t: fb.serverTimestamp() });
+  setTimeout(() => fb.remove(r), 8000);
+}
+function fly(m){
+  const s = document.createElement("span"); s.className = "fly"; s.textContent = m.e; s.style.left = (15 + Math.random() * 70) + "%";
+  if(m.by !== CID){ const n = document.createElement("small"); n.textContent = m.name; s.appendChild(n); }
+  $("stage").appendChild(s); setTimeout(() => s.remove(), 2400);
+}
+
+/* ---------- رابط کاربری ---------- */
+$("nameIn").value = LS.get("name") || "";
+const AL = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const genCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => AL[b % AL.length]).join("");
+const show = id => ["stepA", "stepC", "stepJ"].forEach(s => $(s).hidden = s !== id);
+const getName = () => { me = $("nameIn").value.trim() || "من"; LS.set("name", me); };
+const copyText = async t => { try{ await navigator.clipboard.writeText(t); toast("کپی شد"); }catch(e){ toast("کد رو نگه دار و کپی کن"); } };
+function enterRoom(){
+  $("join").style.display = "none"; $("codeShow").textContent = ROOM;
+  profiles[CID] = { name: me, avatar: avatar || null }; pres[CID] = me; renderPeople(); connect();
+}
+if(ROOM){ $("choice").hidden = true; $("direct").hidden = false; }
+$("directBtn").onclick = () => { getName(); enterRoom(); };
+$("createBtn").onclick = async () => {
+  getName(); $("createBtn").disabled = true;
+  if(await initDb()){
+    try{
+      let c, n = 0;
+      do{ c = genCode(); }while((await fb.get(fb.ref(db, `rooms/${c}/meta`))).exists() && ++n < 5);
+      await fb.set(fb.ref(db, `rooms/${c}/meta`), { created: fb.serverTimestamp() });
+      ROOM = c; history.replaceState(null, "", "#" + c); $("codeBig").textContent = c; show("stepC");
+    }catch(e){ toast("ساخت اتاق ناموفق بود؛ اینترنت یا VPN رو چک کن"); console.error(e); }
+  }
+  $("createBtn").disabled = false;
+};
+$("copyCodeBtn").onclick = $("copyCode2").onclick = () => copyText(ROOM);
+$("enterBtn").onclick = enterRoom;
+$("joinOpt").onclick = () => { getName(); show("stepJ"); $("codeIn").focus(); };
+$("backBtn").onclick = () => show("stepA");
+$("goBtn").onclick = async () => {
+  const c = $("codeIn").value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if(c.length < 4){ toast("کد رو کامل وارد کن"); return; }
+  $("goBtn").disabled = true;
+  if(await initDb()){
+    try{
+      if((await fb.get(fb.ref(db, `rooms/${c}/meta`))).exists()){ ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
+      else toast("اتاقی با این کد پیدا نشد");
+    }catch(e){ toast("اتصال به سرور برقرار نشد"); console.error(e); }
+  }
+  $("goBtn").disabled = false;
+};
+$("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("goBtn").click(); });
+$("nameIn").addEventListener("keydown", e => { if(e.key === "Enter" && ROOM) $("directBtn").click(); });
+
+$("pickVid").onclick = () => { if(locked){ toast("لینک قفله"); return; } $("vidFile").click(); };
+$("vidFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if(f) pickLocal(f); };
+$("playBtn").onclick = () => {
+  if(locked){ toast("لینک قفله"); return; }
+  const u = $("url").value.trim();
+  if(!u){ toast("اول یه لینک بذار"); return; }
+  const id = ytId(u);
+  if(id){
+    currentUrl = "";
+    $("stage").querySelectorAll("video,iframe,.empty").forEach(e => e.remove());
+    const f = document.createElement("iframe");
+    f.src = "https://www.youtube-nocookie.com/embed/" + id + "?playsinline=1&rel=0";
+    f.allow = "autoplay; encrypted-media; picture-in-picture"; $("stage").prepend(f); videoLoaded();
+    toast("یوتیوب فقط برای خودته (هماهنگ نمی‌شه)");
+  } else if(/aparat\.com\/v\//.test(u)){ toast("این لینک صفحه‌ست؛ لینک مستقیم mp4 بذار");
+  } else if(/^https?:\/\//.test(u)){
+    const dv = showDirect(u), t0 = resumeFor(u, dv);
+    if(db){
+      fb.set(fb.ref(db, `rooms/${ROOM}/video`), { url: u, playing: false, time: t0, ts: fb.serverTimestamp(), by: CID });
+      fb.push(fb.ref(db, `rooms/${ROOM}/chat`), { sys: true, text: me + " یه ویدیو گذاشت", by: CID, t: fb.serverTimestamp() });
+    }
+    addHistory(u); askGenre();
+  } else toast("لینک معتبر نیست");
+};
+
+$("sendForm").addEventListener("submit", () => {
+  const t = $("msgIn").value.trim();
+  if(!t || !db) return;
+  setTyping(false);
+  fb.push(fb.ref(db, `rooms/${ROOM}/chat`), { name: me, text: t, by: CID, t: fb.serverTimestamp() });
+  $("msgIn").value = "";
+  if(wrap.classList.contains("ov")) closeChat();
+});
+
+let locked = false;
+$("lock").onclick = () => {
+  locked = !locked; $("lock").textContent = locked ? "🔒" : "🔓"; $("lock").classList.toggle("ghost", !locked);
+  $("newVid").disabled = locked; if(locked) $("bar").classList.add("off");
+  toast(locked ? "لینک قفل شد" : "قفل باز شد");
+};
+$("newVid").onclick = () => {
+  if(locked){ toast("اول قفل رو باز کن"); return; } $("bar").classList.toggle("off"); if(!$("bar").classList.contains("off")) $("url").focus(); };
+$("copyBtn").onclick = async () => {
+  try{ await navigator.clipboard.writeText(location.href); toast("لینک کپی شد"); }catch(e){ toast("لینک رو از نوار آدرس کپی کن"); }
+};
+
+/* ---------- تنظیمات ---------- */
+const openSet = () => { $("nameEdit").value = me; paint($("myPic"), CID, me); $("sheet").classList.add("on"); };
+$("gear").onclick = $("gear2").onclick = openSet;
+$("closeSet").onclick = () => $("sheet").classList.remove("on");
+$("sheet").onclick = e => { if(e.target === $("sheet")) $("sheet").classList.remove("on"); };
+$("nameEdit").onchange = () => { me = $("nameEdit").value.trim() || me; LS.set("name", me); saveProfile(); };
+$("pickBtn").onclick = () => $("file").click();
+$("file").onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas"); c.width = c.height = 96;
+    const s = Math.min(img.width, img.height);
+    c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 96, 96);
+    avatar = c.toDataURL("image/jpeg", .75); LS.set("avatar", avatar); URL.revokeObjectURL(img.src); saveProfile();
   };
+  img.src = URL.createObjectURL(f);
+};
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>

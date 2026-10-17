@@ -1,0 +1,134 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".read": "$room.matches(/^[A-Z0-9]{4,8}$/)",
+
+        "meta": {
+          ".write": "$room.matches(/^[A-Z0-9]{4,8}$/) && !data.exists()",
+          ".validate": "newData.hasChildren(['created'])",
+          "created": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+
+        "profiles": {
+          "$cid": {
+            ".write": "$cid.matches(/^[a-z0-9]{1,16}$/)",
+            ".validate": "newData.hasChildren(['name'])",
+            "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "avatar": { ".validate": "newData.isString() && newData.val().length < 30000" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "presence": {
+          "$cid": {
+            ".write": "$cid.matches(/^[a-z0-9]{1,16}$/)",
+            ".validate": "newData.hasChildren(['name'])",
+            "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "chat": {
+          "$id": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['text', 'by', 't'])",
+            "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500" },
+            "by": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "t": { ".validate": "newData.isNumber()" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "sys": { ".validate": "newData.isBoolean()" },
+            "call": { ".validate": "newData.isBoolean()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "react": {
+          "$id": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['e', 'by', 't'])",
+            "e": { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "by": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "t": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "video": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['url', 'playing', 'time', 'ts', 'by'])",
+          "url": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+          "playing": { ".validate": "newData.isBoolean()" },
+          "time": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "rate": { ".validate": "newData.isNumber() && newData.val() >= 0.25 && newData.val() <= 4" },
+          "ts": { ".validate": "newData.isNumber()" },
+          "by": { ".validate": "newData.isString() && newData.val().length <= 16" },
+          "$other": { ".validate": false }
+        },
+
+        "genre": {
+          ".write": true,
+          ".validate": "newData.isString() && newData.val().matches(/^(horror|romance|war|comedy|scifi|action|fantasy|drama|thriller)$/)"
+        },
+
+        "buf": {
+          "$cid": {
+            ".write": "$cid.matches(/^[a-z0-9]{1,16}$/)",
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          }
+        },
+
+        "typing": {
+          "$cid": {
+            ".write": "$cid.matches(/^[a-z0-9]{1,16}$/)",
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          }
+        },
+
+        "read": {
+          "$cid": {
+            ".write": "$cid.matches(/^[a-z0-9]{1,16}$/)",
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          }
+        },
+
+        "history": {
+          "$id": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['url', 'name', 'by', 't'])",
+            "url": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "by": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "t": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "call": {
+          "members": {
+            "$cid": {
+              ".write": "$cid.matches(/^[a-z0-9]{1,16}$/)",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "signals": {
+            "$cid": {
+              ".write": true,
+              "$id": {
+                ".validate": "newData.hasChildren(['from', 'type', 'data'])",
+                "from": { ".validate": "newData.isString() && newData.val().length <= 16" },
+                "type": { ".validate": "newData.val() == 'offer' || newData.val() == 'answer' || newData.val() == 'ice'" },
+                "data": { ".validate": "newData.hasChildren()" },
+                "$other": { ".validate": false }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
