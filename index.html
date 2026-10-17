@@ -43,8 +43,9 @@ input::placeholder{color:var(--muted)}
 .ctl{display:flex;gap:6px}.ctl .btn.off{background:#e5484d;color:#fff}
 .ov .call{position:absolute;top:calc(56px + env(safe-area-inset-top,0px));left:10px;z-index:6;flex-direction:column;align-items:flex-start;padding:0}
 .ov .tiles{flex-direction:column;flex:none}.ov .tiles video{width:60px;height:80px}
+.lq{left:190px!important;font:700 12px Vazirmatn,sans-serif!important;direction:ltr;opacity:.8}.lstop{left:234px!important;font-size:14px!important}.lq[hidden],.lstop[hidden]{display:none!important}
 .spd{left:102px!important;font:700 12px Vazirmatn,sans-serif!important;direction:ltr}.cc{left:146px!important;font:700 12px Vazirmatn,sans-serif!important}
-.rx,.spd,.cc{position:absolute;top:10px;left:58px;width:36px;height:36px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:16px;opacity:.5;z-index:6;display:grid;place-items:center;cursor:pointer}
+.rx,.spd,.cc,.lq,.lstop{position:absolute;top:10px;left:58px;width:36px;height:36px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:16px;opacity:.5;z-index:6;display:grid;place-items:center;cursor:pointer}
 .tray{position:absolute;top:52px;left:14px;display:none;flex-wrap:wrap;gap:4px;width:184px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px;z-index:8}.tray.on{display:flex}
 .tray.cct{width:250px;left:14px}.tray.cct button{width:auto;min-width:38px;padding:0 10px;font:600 13px Vazirmatn,sans-serif;color:var(--text);background:var(--panel2)}.tray.cct .info{width:100%;font-size:12px;color:var(--muted);text-align:center}
 #sub{position:absolute;left:6%;right:6%;bottom:12%;text-align:center;pointer-events:none;z-index:4;font-weight:700;color:#fff;text-shadow:0 0 4px #000,0 1px 3px #000,0 0 8px #000;line-height:1.7;white-space:pre-line;font-size:var(--subsz,16px)}
@@ -205,6 +206,8 @@ body.kb2:not(.ov){overflow:hidden}body.kb2:not(.ov) .stage{aspect-ratio:auto;hei
   <button class="btn" id="playBtn">پخش</button>
   <button class="btn ghost" id="pickVid">📁 فایل گوشی</button>
   <input type="file" id="vidFile" accept="video/*,.mkv,.mp4,.webm,.mov" hidden>
+  <button class="btn ghost" id="liveBtn">📡 پخش زنده برای پارتنر</button>
+  <input type="file" id="liveFile" accept="video/*,.mkv,.mp4,.webm,.mov" hidden>
 </div>
 
 <div class="wrap" id="wrap">
@@ -218,6 +221,8 @@ body.kb2:not(.ov){overflow:hidden}body.kb2:not(.ov) .stage{aspect-ratio:auto;hei
   <button class="rx" id="rx" aria-label="واکنش">😊</button><div class="tray" id="tray"></div>
   <button class="spd" id="spd" aria-label="سرعت پخش">1×</button>
   <button class="cc" id="cc" aria-label="زیرنویس">CC</button>
+  <button class="lq" id="lq" aria-label="کیفیت پخش زنده" hidden>A</button>
+  <button class="lstop" id="lstop" aria-label="توقف پخش زنده" hidden>⏹</button>
   <div class="tray cct" id="cct">
     <div class="info" id="ccinfo">زیرنویس فقط روی گوشی خودته</div>
     <button id="ccFile">📂 انتخاب فایل (srt / vtt)</button>
@@ -444,13 +449,15 @@ document.querySelector("#sendForm button").addEventListener("pointerdown", e => 
 let ytA = null, ytP = null;   // پلیر یوتیوب (adapter شبیه تگ video)
 const getVideo = () => ytA || $("stage").querySelector("video");
 function clearStage(){
+  if(typeof liveMode !== "undefined" && liveMode) stopLive();
+  if(typeof liveFrom !== "undefined" && liveFrom){ liveFrom = null; $("lq").hidden = true; }
   if(ytA){ clearInterval(ytA._poll); clearTimeout(ytA._bt); try{ ytP && ytP.destroy(); }catch(e){} ytA = null; ytP = null; }
   $("stage").querySelectorAll("video,iframe,.empty,#ytHolder").forEach(e => e.remove());
 }
 const ytId = u => { const m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
 function sendState(){
   const v = getVideo();
-  if(!v || !db || bufHold || Date.now() < ignoreUntil) return;
+  if(!v || !db || bufHold || Date.now() < ignoreUntil || liveFrom) return;
   fb.set(fb.ref(db, `rooms/${ROOM}/video`), { url: currentUrl, playing: !v.paused, time: v.currentTime, rate: v.playbackRate || 1, ts: fb.serverTimestamp(), by: CID });
 }
 function videoLoaded(){ $("bar").classList.add("off"); $("newVid").hidden = false; $("url").value = ""; }
@@ -561,6 +568,15 @@ function showVideo(src, key){
 }
 function applyRemote(s){
   if(!s || s.by === CID || !s.url) return;
+  if(s.url.startsWith("live:")){
+    if(liveMode) return;
+    if(!liveFrom && currentUrl !== "live:wait"){
+      clearStage(); currentUrl = "live:wait";
+      const d = document.createElement("div"); d.className = "empty";
+      d.innerHTML = "<div><b>پارتنرت داره فیلم زنده پخش می‌کنه</b>منتظر اتصال تصویر...</div>"; $("stage").prepend(d);
+    }
+    return;
+  }
   if(s.playing && serverNow() - s.ts > 15000) s = { ...s, playing: false };
   let v = getVideo();
   if(isLocal(s.url)){
@@ -923,7 +939,12 @@ function tile(id, src, mine){
 }
 function hidePanel(){ if(!inCall && !Object.keys(inn).length) $("call").hidden = true; }
 function dropOut(id){ const p = out[id]; if(p){ p.onconnectionstatechange = p.onicecandidate = null; p.close(); delete out[id]; } }
-function dropIn(id){ const p = inn[id]; if(p){ p.onconnectionstatechange = p.onicecandidate = p.ontrack = null; p.close(); delete inn[id]; } const v = document.getElementById("t_" + id); if(v) v.remove(); hidePanel(); }
+function dropIn(id){
+  const p = inn[id]; if(p){ p.onconnectionstatechange = p.onicecandidate = p.ontrack = null; p.close(); delete inn[id]; }
+  const v = document.getElementById("t_" + id);
+  if(v){ const wasLive = v.classList.contains("liveIn"); v.remove(); if(wasLive) liveEnded(); }
+  hidePanel();
+}
 function mkOut(id){
   const pc = new RTCPeerConnection(ICE); out[id] = pc;
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -931,7 +952,7 @@ function mkOut(id){
   pc.onconnectionstatechange = () => {
     if(out[id] !== pc) return;
     const st = pc.connectionState;
-    if(st === "connected"){ tries[id] = 0; toast("تصویر به طرف مقابل وصل شد ✅"); }
+    if(st === "connected"){ tries[id] = 0; toast("تصویر به طرف مقابل وصل شد ✅"); if(liveMode) applyQ(pc); }
     else if(st === "failed"){
       if((tries[id] = (tries[id] || 0) + 1) <= 3){ toast("اتصال برقرار نشد؛ دوباره تلاش می‌کنم (" + tries[id] + ")"); setTimeout(() => { if(inCall && out[id] === pc && pres[id]) offerTo(id).catch(console.error); }, 1000); }
       else toast("اتصال برقرار نشد؛ اینترنت یا VPN هر دو گوشی رو چک کن");
@@ -939,11 +960,12 @@ function mkOut(id){
   };
   return pc;
 }
-function mkIn(id){
-  const pc = new RTCPeerConnection(ICE); inn[id] = pc;
+function mkIn(id, movie){
+  const pc = new RTCPeerConnection(ICE); inn[id] = pc; pc._movie = !!movie;
   pc.onicecandidate = e => { if(e.candidate) sig(id, "v", { type: "ice", data: e.candidate.toJSON() }); };
   pc.ontrack = e => {
     const s = e.streams[0] || (pc._rs = pc._rs || new MediaStream()); if(!e.streams[0]) s.addTrack(e.track);
+    if(pc._movie){ showLive(id, s); return; }
     $("call").hidden = false; tile(id, s);
   };
   pc.onconnectionstatechange = () => { if(inn[id] === pc && pc.connectionState === "failed") toast("اتصال تصویر برقرار نشد"); };
@@ -954,14 +976,19 @@ async function onSignal(m){
   const role = m.from.slice(-1), id = m.from.slice(0, -1);
   if(role === "o"){            // پخش‌کننده برای من (بیننده) فرستاده
     if(m.type === "offer"){
-      dropIn(id); const pc = mkIn(id);
-      await pc.setRemoteDescription(m.data); await flush(m.from, pc);
+      const movie = !!(m.data && m.data.movie);
+      dropIn(id); const pc = mkIn(id, movie);
+      await pc.setRemoteDescription({ type: m.data.type, sdp: m.data.sdp }); await flush(m.from, pc);
       const a = await pc.createAnswer(); await pc.setLocalDescription(a);
       sig(id, "v", { type: "answer", data: { type: a.type, sdp: a.sdp } });
     } else if(m.type === "ice"){
       const pc = inn[id]; if(pc && pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pend[m.from] = pend[m.from] || []).push(m.data);
     }
   } else if(role === "v"){     // بیننده برای من (پخش‌کننده) جواب داده
+    if(m.type === "ice" && m.data && m.data.q){       // درخواست تغییر کیفیت از طرف بیننده
+      if(liveMode && LQ[m.data.q]){ setLiveQ(m.data.q); toast("پارتنرت کیفیت رو گذاشت: " + LQ[m.data.q][0]); }
+      return;
+    }
     const pc = out[id];
     if(m.type === "answer"){ if(!pc || pc.signalingState !== "have-local-offer") return; await pc.setRemoteDescription(m.data); await flush(m.from, pc); }
     else if(m.type === "ice"){ if(pc && pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pend[m.from] = pend[m.from] || []).push(m.data); }
@@ -970,7 +997,8 @@ async function onSignal(m){
 async function offerTo(id){
   dropOut(id); pend["v" + id] = [];
   const pc = mkOut(id), o = await pc.createOffer(); await pc.setLocalDescription(o);
-  sig(id, "o", { type: "offer", data: { type: o.type, sdp: o.sdp } });
+  sig(id, "o", { type: "offer", data: liveMode ? { type: o.type, sdp: o.sdp, movie: 1 } : { type: o.type, sdp: o.sdp } });
+  if(liveMode) applyQ(pc);
 }
 let listening = false;
 async function listenCall(){            // همیشه (حتی بدون تماس) گوش می‌دیم تا بتونیم بیننده باشیم
@@ -1006,6 +1034,79 @@ $("mic").onclick = () => toggleTrack("getAudioTracks", $("mic"), "🎤", "🔇")
 $("cam").onclick = () => toggleTrack("getVideoTracks", $("cam"), "📷", "🚫");
 $("hang").onclick = () => { if(inCall) endCall(); Object.keys(inn).forEach(dropIn); $("call").hidden = true; };
 $("callBtn").onclick = () => inCall ? endCall() : startCall();
+
+/* ---------- پخش زنده‌ی فیلم از گوشی فرستنده (بدون آپلود) ---------- */
+/* فیلم روی گوشی فرستنده پخش می‌شه و تصویرش با همون WebRTC تماس برای پارتنر فرستاده می‌شه.
+   کیفیت: «خودکار» (مرورگر خودش بر اساس اینترنت پایین/بالا می‌بره) یا ثابت 720/480/360/240. هر دو طرف می‌تونن عوضش کنن. */
+const LQ = { auto: ["خودکار", 720, 3000000], q720: ["720", 720, 2500000], q480: ["480", 480, 1200000], q360: ["360", 360, 600000], q240: ["240", 240, 300000] };
+const LQ_ORDER = ["auto", "q720", "q480", "q360", "q240"];
+let liveMode = false, liveQ = "auto", liveFrom = null, liveVid = null;
+function applyQ(pc){
+  const [, h, br] = LQ[liveQ], srcH = (liveVid && liveVid.videoHeight) || h;
+  pc.getSenders().forEach(async s => {
+    if(!s.track || s.track.kind !== "video") return;
+    try{
+      const p = s.getParameters(); if(!p.encodings || !p.encodings.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = br; p.encodings[0].maxFramerate = 30;
+      p.encodings[0].scaleResolutionDownBy = Math.max(1, srcH / h);
+      p.degradationPreference = "balanced";
+      await s.setParameters(p);
+    }catch(e){}
+  });
+}
+function updLq(){ $("lq").textContent = liveQ === "auto" ? "A" : LQ[liveQ][0]; $("lq").title = "کیفیت: " + LQ[liveQ][0]; }
+function setLiveQ(q){ liveQ = q; updLq(); Object.values(out).forEach(applyQ); }
+$("lq").onclick = () => {
+  const q = LQ_ORDER[(LQ_ORDER.indexOf(liveQ) + 1) % LQ_ORDER.length];
+  if(liveMode){ setLiveQ(q); toast("کیفیت: " + LQ[q][0]); }
+  else if(liveFrom){ liveQ = q; updLq(); sig(liveFrom, "v", { type: "ice", data: { q } }); toast("درخواست کیفیت " + LQ[q][0] + " فرستاده شد"); }
+};
+async function startLive(f){
+  if(!db){ toast("اول وارد اتاق شو"); return; }
+  if(locked){ toast("لینک قفله"); return; }
+  if(inCall) endCall(); if(liveMode) stopLive();
+  const key = "live:" + f.name.replace(/[:|]/g, "_").slice(0, 60);
+  const v = showVideo(URL.createObjectURL(f), key); liveVid = v;
+  v.addEventListener("error", () => toast("این فرمت فایل روی این گوشی پخش نمی‌شه"));
+  if(v.readyState < 1) await new Promise(r => v.addEventListener("loadedmetadata", r, { once: true }));
+  const cap = v.captureStream ? v.captureStream() : v.mozCaptureStream ? v.mozCaptureStream() : null;
+  if(!cap){ toast("این مرورگر پخش زنده‌ی فایل رو پشتیبانی نمی‌کنه (با Chrome اندروید یا کامپیوتر امتحان کن)"); clearStage(); return; }
+  for(let i = 0; i < 20 && !cap.getTracks().length; i++) await new Promise(r => setTimeout(r, 150));
+  if(!cap.getTracks().length){ toast("تصویر فایل خونده نشد"); clearStage(); return; }
+  cap.getVideoTracks().forEach(t => { try{ t.contentHint = "motion"; }catch(e){} });
+  stream = cap; liveMode = true; inCall = true;
+  const mem = RR("call/members/" + CID); fb.set(mem, true); fb.onDisconnect(mem).remove();
+  unsubs.push(fb.onChildAdded(RR("presence"), s => { if(s.key !== CID) offerTo(s.key).catch(console.error); }));
+  unsubs.push(fb.onChildRemoved(RR("presence"), s => dropOut(s.key)));
+  fb.push(RR("chat"), { sys: true, call: true, text: "📡 " + me + " فیلم زنده رو شروع کرد", by: CID, t: fb.serverTimestamp() });
+  $("lq").hidden = false; $("lstop").hidden = false; updLq();
+  toast("پخش رو بزن؛ پارتنرت خودکار وصل می‌شه");
+}
+function stopLive(){
+  if(!liveMode) return; liveMode = false;
+  endCall();
+  if(liveVid){ try{ liveVid.pause(); }catch(e){} liveVid = null; }
+  $("lq").hidden = true; $("lstop").hidden = true;
+  if(db) Promise.resolve(fb.remove(fb.ref(db, `rooms/${ROOM}/video`))).catch(() => {});
+}
+function showLive(id, s){
+  let v = document.getElementById("t_" + id);
+  if(v){ v.srcObject = s; return; }
+  clearStage(); currentUrl = "live:"; videoLoaded();
+  v = document.createElement("video"); v.id = "t_" + id; v.className = "liveIn"; v.srcObject = s; v.autoplay = true; v.playsInline = true;
+  v.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;object-fit:contain";
+  v.onclick = () => { v.muted = false; v.play().catch(() => {}); };
+  $("stage").prepend(v);
+  v.play().catch(() => { v.muted = true; v.play().catch(() => {}); toast("برای شنیدن صدا روی تصویر بزن"); });
+  liveFrom = id; $("lq").hidden = false; updLq();
+}
+function liveEnded(){
+  liveFrom = null; $("lq").hidden = true; currentUrl = "";
+  const d = document.createElement("div"); d.className = "empty"; d.innerHTML = "<div><b>پخش زنده تموم شد</b></div>"; $("stage").prepend(d);
+}
+$("liveBtn").onclick = () => { if(locked){ toast("لینک قفله"); return; } $("liveFile").click(); };
+$("liveFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if(f) startLive(f).catch(err => { console.error(err); toast("پخش زنده شروع نشد"); }); };
+$("lstop").onclick = () => { stopLive(); clearStage(); toast("پخش زنده متوقف شد"); };
 
 /* ---------- واکنش‌ها ---------- */
 const EMO = ["❤️","😂","😮","😱","😢","😡","👏","🔥","😍","🥰","🙈","😴"];

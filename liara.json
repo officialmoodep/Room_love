@@ -1,0 +1,6 @@
+{
+  "platform": "node",
+  "port": 3000,
+  "disks": [{ "name": "data", "mountTo": "/data" }],
+  "app": "love-room"
+}

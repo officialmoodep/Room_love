@@ -1,0 +1,13 @@
+[Unit]
+Description=Love Room
+After=network.target
+[Service]
+WorkingDirectory=/opt/love-room
+Environment=PORT=3000
+Environment=DATA_FILE=/var/lib/love-room/db.json
+ExecStart=/usr/bin/node server.js
+Restart=always
+User=www-data
+StateDirectory=love-room
+[Install]
+WantedBy=multi-user.target
