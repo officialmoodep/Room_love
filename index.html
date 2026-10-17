@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111a33">
+<meta name="referrer" content="no-referrer">
 <title>اتاق ما</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -89,7 +90,7 @@
 </div>
 
 <div class="bar">
-  <input id="url" dir="ltr" placeholder="https://youtube.com/watch?v=..." inputmode="url" autocomplete="off">
+  <input id="url" dir="ltr" placeholder="لینک یوتیوب یا لینک مستقیم mp4" inputmode="url" autocomplete="off">
   <button class="btn" id="playBtn">پخش</button>
 </div>
 
@@ -150,11 +151,33 @@
   };
   $("nameIn").addEventListener("keydown", e => { if(e.key === "Enter") $("joinBtn").click(); });
 
+  // این تابع بعداً به Firebase وصل می‌شه تا پلی/پاز/جلو زدن به پارتنرت برسه
+  function syncSend(action, time){ console.log("sync:", action, time); }
+
+  function showDirect(url){
+    const v = document.createElement("video");
+    v.src = url; v.controls = true; v.playsInline = true; v.preload = "metadata";
+    v.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000";
+    v.addEventListener("play",   () => syncSend("play",  v.currentTime));
+    v.addEventListener("pause",  () => syncSend("pause", v.currentTime));
+    v.addEventListener("seeked", () => syncSend("seek",  v.currentTime));
+    v.addEventListener("error",  () => toast("ویدیو باز نشد؛ شاید لینک منقضی شده"));
+    $("stage").innerHTML = "";
+    $("stage").appendChild(v);
+  }
+
   $("playBtn").onclick = () => {
-    const id = ytId($("url").value.trim());
-    if(!id){ toast("لینک یوتیوب معتبر نیست"); return; }
-    $("stage").innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + id +
-      '?playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+    const u = $("url").value.trim();
+    if(!u){ toast("اول یه لینک بذار"); return; }
+    const id = ytId(u);
+    if(id){
+      $("stage").innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + id +
+        '?playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+    } else if(/aparat\.com\/v\//.test(u)){
+      toast("این لینک صفحه‌ست؛ لینک مستقیم mp4 بذار"); return;
+    } else if(/^https?:\/\//.test(u)){
+      showDirect(u);
+    } else { toast("لینک معتبر نیست"); return; }
     addMsg(me + " یه ویدیو گذاشت", "sys");
   };
 
