@@ -23,7 +23,7 @@
 [data-mode=night]{--bg:hsl(var(--h) 15% 3%);--panel:hsl(var(--h) 14% 8%);--panel2:hsl(var(--h) 12% 14%);--text:#d6d6dc;--muted:hsl(var(--h) 8% 58%);--line:hsl(var(--h) 10% 17%);--glow:hsl(var(--h) 20% 6%);color-scheme:dark}
 [data-mode=light]{--bg:hsl(var(--h) 45% 96%);--panel:hsl(var(--h) 35% 91%);--panel2:hsl(var(--h) 30% 85%);--text:#1b1f33;--muted:hsl(var(--h) 15% 38%);--line:hsl(var(--h) 25% 78%);--glow:hsl(var(--h) 70% 90%);color-scheme:light}
 *{box-sizing:border-box;margin:0}
-html,body{height:100%}
+html,body{height:100%}html{overflow:hidden;overscroll-behavior:none}
 body{font-family:"Vazirmatn",system-ui,sans-serif;background:var(--bg) radial-gradient(circle at 85% -10%,var(--glow) 0,transparent 45%) no-repeat;color:var(--text);display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 body.ov{padding:0}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px}
@@ -380,9 +380,14 @@ function updMode(){
   wasOv = ov;
 }
 /* کیبورد: ارتفاع صفحه = ناحیه‌ی دیدنی بالای کیبورد (iOS و اندروید) */
-if(window.visualViewport && /iPad|iPhone|iPod/.test(navigator.userAgent)){
-  const vv = visualViewport;
-  const fit = () => { document.body.style.height = vv.height + "px"; if(vv.offsetTop) scrollTo(0, 0); };
+if(window.visualViewport){
+  const vv = visualViewport, bd = document.body;
+  const fit = () => {
+    /* مرورگرهایی (مثل سامسونگ) که کیبورد رو روی صفحه می‌ندازن: صفحه رو به ناحیه‌ی دیدنی بالای کیبورد می‌چسبونیم */
+    const shrunk = innerHeight - vv.height > 80 || vv.offsetTop > 1;
+    if(shrunk){ bd.style.height = vv.height + "px"; bd.style.transform = vv.offsetTop > 1 ? `translateY(${vv.offsetTop}px)` : ""; }
+    else { bd.style.height = ""; bd.style.transform = ""; }
+  };
   vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit);
 }
 document.addEventListener("fullscreenchange", updMode); addEventListener("resize", updMode); mq.addEventListener("change", updMode); updMode();
