@@ -78,6 +78,11 @@ video::-webkit-media-controls-fullscreen-button{display:none}
 .typing{padding:0 14px 4px;font-size:12px;color:var(--accent);min-height:0}.typing[hidden]{display:none}
 .tk{font-size:11px;margin-inline-start:6px;opacity:.55;letter-spacing:-2px}.tk.read{opacity:1;color:var(--accent)}
 .hist{display:flex;flex-direction:column;gap:8px;max-height:50dvh;overflow:auto}
+.rlist{display:flex;flex-direction:column;gap:8px;max-height:40dvh;overflow:auto}
+.rm{display:flex;gap:8px;align-items:center}
+.rmgo{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:var(--panel2);border:0;color:var(--text);font:inherit;border-radius:14px;padding:10px 12px;cursor:pointer;text-align:start}
+.rmgo b{letter-spacing:3px;direction:ltr}.rmgo small{opacity:.7;font-size:11px}.rmgo.cur{outline:2px solid var(--accent)}
+.rmdel{border:0;background:var(--panel2);color:var(--text);border-radius:14px;padding:12px;cursor:pointer;font:inherit}
 .hi{display:flex;align-items:center;gap:10px;background:var(--panel2);border:0;color:var(--text);font:inherit;text-align:start;border-radius:14px;padding:10px 12px;cursor:pointer}
 .hi b{display:block;font-size:14px;direction:ltr;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}.hi small{color:var(--muted);font-size:12px}.hi span{font-size:22px}.hi div{flex:1;min-width:0}
 .send{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid var(--line)}.send input{flex:1}
@@ -166,6 +171,7 @@ body.kb2:not(.ov){overflow:hidden}body.kb2:not(.ov) .stage{aspect-ratio:auto;hei
       <button class="btn" id="directBtn">ورود به اتاق</button>
       <button class="btn ghost" id="otherBtn">اتاق دیگه (ساخت یا ورود با کد)</button>
     </section>
+    <section id="myRooms" class="rlist" hidden></section>
   </section>
   <section id="stepC" hidden>
     <p>این کد رو کپی کن و برای پارتنرت بفرست تا با «ورود به روم» واردش کنه.</p>
@@ -184,6 +190,7 @@ body.kb2:not(.ov){overflow:hidden}body.kb2:not(.ov) .stage{aspect-ratio:auto;hei
 <header>
   <h1>اتاق ما</h1>
   <div class="people" id="people"></div>
+  <button class="btn ghost" id="roomsBtn" aria-label="اتاق‌ها">🏠</button>
   <button class="btn ghost" id="callBtn" aria-label="تماس">📞</button>
   <button class="btn ghost" id="lock" aria-label="قفل لینک">🔓</button>
   <button class="btn ghost" id="newVid" hidden>ویدیوی جدید</button>
@@ -247,6 +254,12 @@ body.kb2:not(.ov){overflow:hidden}body.kb2:not(.ov) .stage{aspect-ratio:auto;hei
     <p class="lbl">تم سایت برای هر دو نفر با ژانر عوض می‌شه</p>
     <div class="gen" id="gen"></div>
     <button class="btn ghost" id="gnone">بدون ژانر (تم عادی)</button>
+  </div></div>
+  <div class="sheet" id="rsheet"><div class="card">
+    <b>اتاق‌های من</b>
+    <div class="rlist" id="roomList"></div>
+    <button class="btn" id="newRoom">➕ ساخت اتاق جدید</button>
+    <button class="btn ghost" id="rclose">بستن</button>
   </div></div>
   <div class="sheet" id="hsheet"><div class="card">
     <b>ویدیوهایی که تو این اتاق دیدین</b>
@@ -683,6 +696,8 @@ async function connect(){
   fb.onValue(R("buf"), s => { others = {}; for(const [k, n] of Object.entries(s.val() || {})) if(k !== CID) others[k] = n; updHold(); });
   fb.onValue(R("genre"), s => applyGenre(s.val() || "", true));
   fb.onValue(R("video"), s => applyRemote(s.val()));
+  let metaSeen = false;
+  fb.onValue(R("meta"), s => { if(s.exists()) metaSeen = true; else if(metaSeen){ toast("این اتاق حذف شد"); forgetRoom(ROOM); setTimeout(() => { history.replaceState(null, "", location.pathname + location.search); location.reload(); }, 1500); } });
 }
 
 /* ---------- تماس تصویری و صدا ---------- */
@@ -823,7 +838,79 @@ const genCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b =>
 const show = id => ["stepA", "stepC", "stepJ"].forEach(s => $(s).hidden = s !== id);
 const getName = () => { me = $("nameIn").value.trim() || "من"; LS.set("name", me); };
 const copyText = async t => { try{ await navigator.clipboard.writeText(t); toast("کپی شد"); }catch(e){ toast("کد رو نگه دار و کپی کن"); } };
+/* ---------- اتاق‌های من: ساخت، لیست، حذف ---------- */
+let inRoom = false;
+const getRooms = () => { try{ return JSON.parse(LS.get("rooms") || "[]").filter(r => r && /^[A-Z0-9]{4,8}$/.test(r.c)); }catch(e){ return []; } };
+const saveRooms = a => LS.set("rooms", JSON.stringify(a.slice(0, 50)));
+function rememberRoom(c, mine){
+  const a = getRooms(), r = a.find(x => x.c === c);
+  if(r){ if(mine) r.mine = true; r.t = Date.now(); } else a.push({ c, mine: !!mine, t: Date.now() });
+  a.sort((x, y) => y.t - x.t); saveRooms(a);
+}
+const forgetRoom = c => saveRooms(getRooms().filter(r => r.c !== c));
+async function makeRoom(){
+  let c, n = 0;
+  do{ c = genCode(); }while((await roomExists(c)) && ++n < 5);
+  await withTO(fb.set(fb.ref(db, `rooms/${c}/meta`), { created: fb.serverTimestamp() }));
+  return c;
+}
+function renderRooms(box, title){
+  box.textContent = "";
+  const a = getRooms();
+  if(box.id === "myRooms") box.hidden = !a.length;
+  if(!a.length){ if(!title){ const p = document.createElement("p"); p.className = "lbl"; p.textContent = "هنوز اتاقی نساختی یا واردش نشدی"; box.appendChild(p); } return; }
+  if(title){ const t = document.createElement("small"); t.className = "lbl"; t.textContent = title; box.appendChild(t); }
+  for(const r of a){
+    const row = document.createElement("span"); row.className = "rm";
+    const go = document.createElement("button"); go.className = "rmgo" + (inRoom && r.c === ROOM ? " cur" : "");
+    const b = document.createElement("b"), sm = document.createElement("small");
+    b.textContent = r.c;
+    sm.textContent = (r.mine ? "ساخته‌ی من" : "عضو شده") + " · " + new Date(r.t).toLocaleDateString("fa-IR") + (inRoom && r.c === ROOM ? " · اتاق فعلی" : "");
+    go.append(b, sm); go.onclick = () => enterSaved(r.c);
+    const del = document.createElement("button"); del.className = "rmdel"; del.textContent = r.mine ? "🗑" : "✕";
+    del.title = r.mine ? "حذف اتاق" : "حذف از لیست"; del.setAttribute("aria-label", del.title);
+    del.onclick = () => delRoom(r.c, !!r.mine);
+    row.append(go, del); box.appendChild(row);
+  }
+}
+const refreshRooms = () => { renderRooms($("myRooms"), "اتاق‌های من"); renderRooms($("roomList")); };
+const msg = t => inRoom ? toast(t) : jm(t);
+async function enterSaved(c){
+  if(inRoom){
+    if(c === ROOM){ $("rsheet").classList.remove("on"); return; }
+    LS.set("auto", c); history.replaceState(null, "", "#" + c); location.reload(); return;
+  }
+  getName(); jm("در حال اتصال...");
+  if(await initDb()){
+    try{
+      if(await roomExists(c)){ jm(""); ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
+      else { forgetRoom(c); refreshRooms(); jm("این اتاق دیگه وجود نداره"); }
+    }catch(e){ jm(errText(e)); console.error(e); }
+  }
+}
+async function delRoom(c, mine){
+  if(!mine){ forgetRoom(c); refreshRooms(); return; }
+  if(!confirm("اتاق " + c + " با همه‌ی پیام‌ها و تاریخچه‌اش برای همیشه حذف بشه؟")) return;
+  try{
+    if(!(await initDb())) return;
+    await withTO(fb.remove(fb.ref(db, `rooms/${c}`)));
+    forgetRoom(c); msg("اتاق حذف شد");
+    if(inRoom && c === ROOM){ history.replaceState(null, "", location.pathname + location.search); setTimeout(() => location.reload(), 700); }
+    else refreshRooms();
+  }catch(e){ msg("حذف نشد: " + errText(e) + " — فایل database.rules.json جدید رو تو Firebase منتشر کن"); console.error(e); }
+}
+$("roomsBtn").onclick = () => { refreshRooms(); $("rsheet").classList.add("on"); };
+$("rclose").onclick = () => $("rsheet").classList.remove("on");
+$("rsheet").onclick = e => { if(e.target === $("rsheet")) $("rsheet").classList.remove("on"); };
+$("newRoom").onclick = async () => {
+  $("newRoom").disabled = true;
+  try{ const c = await makeRoom(); rememberRoom(c, true); LS.set("auto", c); history.replaceState(null, "", "#" + c); location.reload(); }
+  catch(e){ toast("ساخت اتاق ناموفق: " + errText(e)); console.error(e); $("newRoom").disabled = false; }
+};
+refreshRooms();
+
 function enterRoom(){
+  inRoom = true; rememberRoom(ROOM);
   $("join").style.display = "none"; $("codeShow").textContent = ROOM;
   profiles[CID] = { name: me, avatar: avatar || null }; pres[CID] = me; renderPeople(); connect();
 }
@@ -838,6 +925,7 @@ $("directBtn").onclick = async () => {
   }
   $("directBtn").disabled = false;
 };
+if(ROOM && LS.get("auto") === ROOM){ LS.set("auto", ""); setTimeout(() => $("directBtn").click(), 0); }
 $("otherBtn").onclick = () => {
   ROOM = ""; history.replaceState(null, "", location.pathname + location.search);
   $("direct").hidden = true; $("choice").hidden = false;
@@ -846,9 +934,7 @@ $("createBtn").onclick = async () => {
   getName(); $("createBtn").disabled = true; jm("در حال اتصال...");
   if(await initDb()){
     try{
-      let c, n = 0;
-      do{ c = genCode(); }while((await roomExists(c)) && ++n < 5);
-      await withTO(fb.set(fb.ref(db, `rooms/${c}/meta`), { created: fb.serverTimestamp() }));
+      const c = await makeRoom(); rememberRoom(c, true);
       jm(""); ROOM = c; history.replaceState(null, "", "#" + c); $("codeBig").textContent = c; show("stepC");
     }catch(e){ jm("ساخت اتاق ناموفق: " + errText(e)); console.error(e); }
   }

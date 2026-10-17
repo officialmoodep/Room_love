@@ -5,6 +5,7 @@
     "rooms": {
       "$room": {
         ".read": "$room.matches(/^[A-Z0-9]{4,8}$/)",
+        ".write": "$room.matches(/^[A-Z0-9]{4,8}$/) && !newData.exists()",
 
         "meta": {
           ".write": "$room.matches(/^[A-Z0-9]{4,8}$/) && !data.exists()",
