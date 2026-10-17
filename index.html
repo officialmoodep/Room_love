@@ -686,35 +686,63 @@ async function connect(){
 /* ---------- تماس تصویری و صدا ---------- */
 const RR = p => fb.ref(db, `rooms/${ROOM}/${p}`);
 const peers = {}; let stream = null, inCall = false, unsubs = [];
-const ICE = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }] };
+/* سرورهای اتصال: STUN فقط آدرس عمومی رو پیدا می‌کنه، ولی روی اینترنت موبایل/NAT سخت (که تو ایران رایجه)
+   اتصال مستقیم برقرار نمی‌شه و TURN لازمه. اگه روزی این TURN رایگان کند یا قطع شد، فقط همین بخش رو
+   با سرور TURN خودت (مثلاً کلید رایگان metered.ca یا Cloudflare Calls) عوض کن. */
+const ICE = { iceCandidatePoolSize: 4, iceServers: [
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"] },
+  { urls: [
+      "turn:staticauth.openrelay.metered.ca:80",
+      "turn:staticauth.openrelay.metered.ca:443",
+      "turns:staticauth.openrelay.metered.ca:443?transport=tcp",
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:443",
+      "turn:openrelay.metered.ca:443?transport=tcp",
+      "turns:openrelay.metered.ca:443?transport=tcp"
+    ], username: "openrelayproject", credential: "openrelayproject" }
+] };
 const sig = (to, o) => fb.push(RR("call/signals/" + to), { from: CID, ...o });
+const pend = {}, tries = {};
 function tile(id, src, mine){
   let v = document.getElementById("t_" + id);
-  if(!v){ v = document.createElement("video"); v.id = "t_" + id; v.autoplay = true; v.playsInline = true; v.muted = !!mine; if(mine) v.className = "me"; $("tiles").appendChild(v); }
-  v.srcObject = src; return v;
+  if(!v){ v = document.createElement("video"); v.id = "t_" + id; v.autoplay = true; v.playsInline = true; v.muted = !!mine; if(mine) v.className = "me"; v.onclick = () => v.play().catch(() => {}); $("tiles").appendChild(v); }
+  v.srcObject = src; v.play().catch(() => {}); return v;
 }
-function dropPeer(id){ if(peers[id]){ peers[id].close(); delete peers[id]; } const v = document.getElementById("t_" + id); if(v) v.remove(); }
+function dropPeer(id){ if(peers[id]){ const p = peers[id]; p.onconnectionstatechange = p.onicecandidate = p.ontrack = null; p.close(); delete peers[id]; } const v = document.getElementById("t_" + id); if(v) v.remove(); }
 function mkPeer(id){
   const pc = new RTCPeerConnection(ICE); peers[id] = pc;
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
   pc.onicecandidate = e => { if(e.candidate) sig(id, { type: "ice", data: e.candidate.toJSON() }); };
-  pc.ontrack = e => tile(id, e.streams[0]);
-  pc.onconnectionstatechange = () => { if(pc.connectionState === "failed") toast("اتصال تماس برقرار نشد"); };
+  pc.ontrack = e => tile(id, e.streams[0] || (pc._rs = pc._rs || new MediaStream()) && (pc._rs.addTrack(e.track), pc._rs));
+  pc.onconnectionstatechange = () => {
+    if(peers[id] !== pc) return;
+    const st = pc.connectionState;
+    if(st === "connected"){ tries[id] = 0; toast("تماس وصل شد ✅"); }
+    else if(st === "failed"){
+      if(CID > id && (tries[id] = (tries[id] || 0) + 1) <= 3){ toast("اتصال برقرار نشد؛ دوباره تلاش می‌کنم (" + tries[id] + ")"); setTimeout(() => { if(inCall && peers[id] === pc) offerTo(id).catch(console.error); }, 1000); }
+      else toast("اتصال تماس برقرار نشد (شبکه یا VPN رو چک کن)");
+    }
+  };
   return pc;
 }
-async function flush(pc){ for(const c of pc._q || []) await pc.addIceCandidate(c).catch(() => {}); pc._q = []; }
+async function flush(id, pc){ const q = pend[id] || []; pend[id] = []; for(const c of q) await pc.addIceCandidate(c).catch(() => {}); }
 async function onSignal(m){
   if(!inCall) return;
-  const pc = peers[m.from] || mkPeer(m.from);
   if(m.type === "offer"){
-    await pc.setRemoteDescription(m.data); await flush(pc);
+    dropPeer(m.from); const pc = mkPeer(m.from);
+    await pc.setRemoteDescription(m.data); await flush(m.from, pc);
     const a = await pc.createAnswer(); await pc.setLocalDescription(a);
     sig(m.from, { type: "answer", data: { type: a.type, sdp: a.sdp } });
-  } else if(m.type === "answer"){ await pc.setRemoteDescription(m.data); await flush(pc); }
-  else if(m.type === "ice"){ if(pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pc._q = pc._q || []).push(m.data); }
+  } else if(m.type === "answer"){
+    const pc = peers[m.from]; if(!pc || pc.signalingState !== "have-local-offer") return;
+    await pc.setRemoteDescription(m.data); await flush(m.from, pc);
+  } else if(m.type === "ice"){
+    const pc = peers[m.from];
+    if(pc && pc.remoteDescription) await pc.addIceCandidate(m.data).catch(() => {}); else (pend[m.from] = pend[m.from] || []).push(m.data);
+  }
 }
 async function offerTo(id){
-  dropPeer(id);
+  dropPeer(id); pend[id] = [];
   const pc = mkPeer(id), o = await pc.createOffer(); await pc.setLocalDescription(o);
   sig(id, { type: "offer", data: { type: o.type, sdp: o.sdp } });
 }
@@ -732,7 +760,7 @@ async function startCall(){
 }
 function endCall(){
   inCall = false; unsubs.forEach(u => u()); unsubs = [];
-  Object.keys(peers).forEach(dropPeer);
+  Object.keys(peers).forEach(dropPeer); Object.keys(pend).forEach(k => delete pend[k]); Object.keys(tries).forEach(k => delete tries[k]);
   if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
   $("tiles").innerHTML = ""; $("call").hidden = true; $("callBtn").classList.add("ghost");
   $("mic").classList.remove("off"); $("mic").textContent = "🎤"; $("cam").classList.remove("off"); $("cam").textContent = "📷";
