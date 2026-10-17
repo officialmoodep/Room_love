@@ -103,6 +103,7 @@ input::placeholder{color:var(--muted)}
 .join section{display:flex;flex-direction:column;gap:12px}.join [hidden]{display:none}
 .join .code{font:800 32px/1 ui-monospace,monospace;letter-spacing:6px;text-align:center;direction:ltr;background:var(--panel2);padding:14px;border-radius:14px;color:var(--accent);user-select:all}
 .codein{text-align:center;letter-spacing:4px;font-size:20px;text-transform:uppercase}
+.jmsg{min-height:1.6em;color:var(--accent)!important;font-weight:700;font-size:13px}
 .join h2{font-size:20px}.join p{color:var(--muted);font-size:13px;line-height:1.8}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--ink);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}.toast.on{opacity:1}
 
@@ -147,6 +148,7 @@ html[data-genre=thriller] #fx{background:radial-gradient(ellipse at center,trans
 
 <div class="join" id="join"><div>
   <h2>به اتاق خوش اومدی</h2>
+  <p class="jmsg" id="jmsg" role="status"></p>
   <section id="stepA">
     <p>اسمت رو بنویس تا تو چت نشون داده بشه.</p>
     <input id="nameIn" placeholder="اسم تو" maxlength="20" autocomplete="off">
@@ -609,13 +611,22 @@ $("hclose").onclick = () => $("hsheet").classList.remove("on");
 $("hsheet").onclick = e => { if(e.target === $("hsheet")) $("hsheet").classList.remove("on"); };
 
 /* ---------- Firebase ---------- */
+const jm = t => { $("jmsg").textContent = t || ""; };
+const withTO = (p, ms = 10000) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error("TIMEOUT")), ms))]);
+const errText = e => {
+  const m = String((e && (e.code || e.message)) || e);
+  if(/TIMEOUT|offline/i.test(m)) return "سرور جواب نمی‌ده؛ اینترنت یا VPN این گوشی رو چک کن";
+  if(/permission/i.test(m)) return "قوانین دیتابیس (Rules) اجازه‌ی خوندن/نوشتن نمی‌ده";
+  return "خطا: " + m;
+};
+const roomExists = async c => (await withTO(fb.get(fb.ref(db, `rooms/${c}/meta`)))).exists();
 async function initDb(){
   if(db) return true;
   try{
     const base = "https://www.gstatic.com/firebasejs/10.12.2/";
-    const [app, rtdb] = await Promise.all([import(base + "firebase-app.js"), import(base + "firebase-database.js")]);
+    const [app, rtdb] = await withTO(Promise.all([import(base + "firebase-app.js"), import(base + "firebase-database.js")]), 15000);
     fb = rtdb; db = rtdb.getDatabase(app.initializeApp({ databaseURL: DB_URL })); return true;
-  }catch(e){ toast("اتصال به سرور برقرار نشد"); console.error(e); return false; }
+  }catch(e){ jm("کتابخانه‌ی Firebase بارگذاری نشد؛ اینترنت یا VPN این گوشی رو چک کن"); console.error(e); return false; }
 }
 async function connect(){
   if(!(await initDb())) return;
@@ -731,12 +742,12 @@ function enterRoom(){
 }
 if(ROOM){ $("choice").hidden = true; $("direct").hidden = false; $("dirCode").textContent = ROOM; }
 $("directBtn").onclick = async () => {
-  getName(); $("directBtn").disabled = true;
+  getName(); $("directBtn").disabled = true; jm("در حال اتصال...");
   if(await initDb()){
     try{
-      if((await fb.get(fb.ref(db, `rooms/${ROOM}/meta`))).exists()) enterRoom();
-      else { toast("اتاقی با این کد پیدا نشد؛ یه اتاق جدید بساز یا کد درست رو بزن"); $("otherBtn").click(); }
-    }catch(e){ toast("اتصال به سرور برقرار نشد"); console.error(e); }
+      if(await roomExists(ROOM)){ jm(""); enterRoom(); }
+      else { $("otherBtn").click(); jm("اتاقی با این کد پیدا نشد؛ یه اتاق جدید بساز یا کد درست رو بزن"); }
+    }catch(e){ jm(errText(e)); console.error(e); }
   }
   $("directBtn").disabled = false;
 };
@@ -745,14 +756,14 @@ $("otherBtn").onclick = () => {
   $("direct").hidden = true; $("choice").hidden = false;
 };
 $("createBtn").onclick = async () => {
-  getName(); $("createBtn").disabled = true;
+  getName(); $("createBtn").disabled = true; jm("در حال اتصال...");
   if(await initDb()){
     try{
       let c, n = 0;
-      do{ c = genCode(); }while((await fb.get(fb.ref(db, `rooms/${c}/meta`))).exists() && ++n < 5);
-      await fb.set(fb.ref(db, `rooms/${c}/meta`), { created: fb.serverTimestamp() });
-      ROOM = c; history.replaceState(null, "", "#" + c); $("codeBig").textContent = c; show("stepC");
-    }catch(e){ toast("ساخت اتاق ناموفق بود؛ اینترنت یا VPN رو چک کن"); console.error(e); }
+      do{ c = genCode(); }while((await roomExists(c)) && ++n < 5);
+      await withTO(fb.set(fb.ref(db, `rooms/${c}/meta`), { created: fb.serverTimestamp() }));
+      jm(""); ROOM = c; history.replaceState(null, "", "#" + c); $("codeBig").textContent = c; show("stepC");
+    }catch(e){ jm("ساخت اتاق ناموفق: " + errText(e)); console.error(e); }
   }
   $("createBtn").disabled = false;
 };
@@ -762,13 +773,13 @@ $("joinOpt").onclick = () => { getName(); show("stepJ"); $("codeIn").focus(); };
 $("backBtn").onclick = () => show("stepA");
 $("goBtn").onclick = async () => {
   const c = $("codeIn").value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if(c.length < 4){ toast("کد رو کامل وارد کن"); return; }
-  $("goBtn").disabled = true;
+  if(c.length < 4){ jm("کد رو کامل وارد کن"); return; }
+  $("goBtn").disabled = true; jm("در حال اتصال...");
   if(await initDb()){
     try{
-      if((await fb.get(fb.ref(db, `rooms/${c}/meta`))).exists()){ ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
-      else toast("اتاقی با این کد پیدا نشد");
-    }catch(e){ toast("اتصال به سرور برقرار نشد"); console.error(e); }
+      if(await roomExists(c)){ jm(""); ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
+      else jm("اتاقی با این کد پیدا نشد");
+    }catch(e){ jm(errText(e)); console.error(e); }
   }
   $("goBtn").disabled = false;
 };
