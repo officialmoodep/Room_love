@@ -151,7 +151,11 @@ html[data-genre=thriller] #fx{background:radial-gradient(ellipse at center,trans
     <p>اسمت رو بنویس تا تو چت نشون داده بشه.</p>
     <input id="nameIn" placeholder="اسم تو" maxlength="20" autocomplete="off">
     <section id="choice"><button class="btn" id="createBtn">ساخت روم</button><button class="btn ghost" id="joinOpt">ورود به روم</button></section>
-    <section id="direct" hidden><button class="btn" id="directBtn">ورود به اتاق</button></section>
+    <section id="direct" hidden>
+      <p>با لینک دعوت اومدی؛ اتاق <b id="dirCode" dir="ltr"></b></p>
+      <button class="btn" id="directBtn">ورود به اتاق</button>
+      <button class="btn ghost" id="otherBtn">اتاق دیگه (ساخت یا ورود با کد)</button>
+    </section>
   </section>
   <section id="stepC" hidden>
     <p>این کد رو کپی کن و برای پارتنرت بفرست تا با «ورود به روم» واردش کنه.</p>
@@ -360,10 +364,18 @@ $("scrim").onclick = $("xBtn").onclick = closeChat;
 
 /* ---------- افقی / تمام‌صفحه ---------- */
 const mq = matchMedia("(orientation:landscape) and (max-height:520px)");
+let wasOv = false;
 function updMode(){
   const ov = document.fullscreenElement === wrap || mq.matches;
   wrap.classList.toggle("ov", ov); document.body.classList.toggle("ov", ov);
-  if(!ov) closeChat();
+  if(wasOv && !ov) closeChat();
+  wasOv = ov;
+}
+/* کیبورد: ارتفاع صفحه = ناحیه‌ی دیدنی بالای کیبورد (iOS و اندروید) */
+if(window.visualViewport){
+  const vv = visualViewport;
+  const fit = () => { document.body.style.height = vv.height + "px"; if(vv.offsetTop) scrollTo(0, 0); };
+  vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit);
 }
 document.addEventListener("fullscreenchange", updMode); addEventListener("resize", updMode); mq.addEventListener("change", updMode); updMode();
 $("fs").onclick = async () => {
@@ -717,8 +729,21 @@ function enterRoom(){
   $("join").style.display = "none"; $("codeShow").textContent = ROOM;
   profiles[CID] = { name: me, avatar: avatar || null }; pres[CID] = me; renderPeople(); connect();
 }
-if(ROOM){ $("choice").hidden = true; $("direct").hidden = false; }
-$("directBtn").onclick = () => { getName(); enterRoom(); };
+if(ROOM){ $("choice").hidden = true; $("direct").hidden = false; $("dirCode").textContent = ROOM; }
+$("directBtn").onclick = async () => {
+  getName(); $("directBtn").disabled = true;
+  if(await initDb()){
+    try{
+      if((await fb.get(fb.ref(db, `rooms/${ROOM}/meta`))).exists()) enterRoom();
+      else { toast("اتاقی با این کد پیدا نشد؛ یه اتاق جدید بساز یا کد درست رو بزن"); $("otherBtn").click(); }
+    }catch(e){ toast("اتصال به سرور برقرار نشد"); console.error(e); }
+  }
+  $("directBtn").disabled = false;
+};
+$("otherBtn").onclick = () => {
+  ROOM = ""; history.replaceState(null, "", location.pathname + location.search);
+  $("direct").hidden = true; $("choice").hidden = false;
+};
 $("createBtn").onclick = async () => {
   getName(); $("createBtn").disabled = true;
   if(await initDb()){

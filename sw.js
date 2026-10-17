@@ -1,4 +1,4 @@
-const C = "room-v5";
+const C = "room-v7";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(clients.claim()));
 self.addEventListener("fetch", e => {
