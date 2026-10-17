@@ -10,9 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>اتاق ما</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<!-- فونت اختیاریه و صفحه رو معطل نمی‌کنه (تو ایران بدون فیلترشکن باز نمی‌شه و از فونت سیستم استفاده می‌شه) -->
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{--h:228;--accent:#ffb86b;--ink:#2a1a00}
 [data-theme=rose]{--h:335;--accent:#ff7aa8;--ink:#3a0018}
@@ -76,6 +75,7 @@ video::-webkit-media-controls-fullscreen-button{display:none}
 .me .m{background:color-mix(in srgb,var(--accent) 30%,var(--panel2))}
 .m small{display:block;color:var(--muted);font-size:11px}
 .typing{padding:0 14px 4px;font-size:12px;color:var(--accent);min-height:0}.typing[hidden]{display:none}
+.tm{font-size:10px;opacity:.65;margin-inline-start:14px;white-space:nowrap;display:inline-block}
 .tk{font-size:11px;margin-inline-start:6px;opacity:.55;letter-spacing:-2px}.tk.read{opacity:1;color:var(--accent)}
 .hist{display:flex;flex-direction:column;gap:8px;max-height:50dvh;overflow:auto}
 .rlist{display:flex;flex-direction:column;gap:8px;max-height:40dvh;overflow:auto}
@@ -350,9 +350,14 @@ function saveProfile(){
 }
 
 /* ---------- چت ---------- */
+function fmtClock(t){
+  if(typeof t !== "number" || !t) return "";
+  const d = new Date(t), hm = d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toDateString() === new Date().toDateString() ? hm : d.toLocaleDateString("fa-IR", { month: "numeric", day: "numeric" }) + " " + hm;
+}
 function addMsg(m, key){
-  const el = document.createElement("div");
-  if(m.sys){ el.className = "row sys"; el.textContent = m.text; }
+  const el = document.createElement("div"), clock = fmtClock(m.t);
+  if(m.sys){ el.className = "row sys"; el.textContent = m.text + (clock ? " · " + clock : ""); }
   else {
     el.className = "row" + (m.by === CID ? " me" : "");
     const pic = document.createElement("div"); pic.className = "pic"; pic.dataset.by = m.by; pic.dataset.n = m.name; paint(pic, m.by, m.name);
@@ -360,6 +365,7 @@ function addMsg(m, key){
     const s = document.createElement("small"); s.textContent = m.name;
     const t = document.createElement("span"); t.textContent = m.text;
     b.append(s, t);
+    if(clock){ const tm = document.createElement("span"); tm.className = "tm"; tm.textContent = clock; b.appendChild(tm); }
     if(m.by === CID && key){ el.dataset.k = key; const k = document.createElement("span"); k.className = "tk"; k.textContent = "✓"; b.appendChild(k); }
     el.append(pic, b);
   }
@@ -435,7 +441,12 @@ $("url").addEventListener("blur", () => document.body.classList.remove("kb2"));
 document.querySelector("#sendForm button").addEventListener("pointerdown", e => e.preventDefault());
 
 /* ---------- پخش هماهنگ ---------- */
-const getVideo = () => $("stage").querySelector("video");
+let ytA = null, ytP = null;   // پلیر یوتیوب (adapter شبیه تگ video)
+const getVideo = () => ytA || $("stage").querySelector("video");
+function clearStage(){
+  if(ytA){ clearInterval(ytA._poll); clearTimeout(ytA._bt); try{ ytP && ytP.destroy(); }catch(e){} ytA = null; ytP = null; }
+  $("stage").querySelectorAll("video,iframe,.empty,#ytHolder").forEach(e => e.remove());
+}
 const ytId = u => { const m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
 function sendState(){
   const v = getVideo();
@@ -467,6 +478,69 @@ function watchBuf(v){
   v.addEventListener("waiting", () => { clearTimeout(bufT); bufT = setTimeout(() => { if(v.readyState < 3) setMyBuf(true); }, 500); });
   ["playing", "canplay", "canplaythrough", "seeked"].forEach(e => v.addEventListener(e, () => { clearTimeout(bufT); if(v.readyState >= 3) setMyBuf(false); }));
 }
+/* ---------- یوتیوب هماهنگ (YouTube IFrame API، رایگان و بدون کلید) ---------- */
+let ytLoad = null;
+function loadYT(){
+  if(window.YT && window.YT.Player) return Promise.resolve();
+  return ytLoad || (ytLoad = new Promise((res, rej) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if(prev) prev(); res(); };
+    const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; sc.async = true;
+    sc.onerror = () => { ytLoad = null; rej(new Error("yt")); };
+    document.head.appendChild(sc);
+    setTimeout(() => { if(!(window.YT && window.YT.Player)){ ytLoad = null; rej(new Error("TIMEOUT")); } }, 12000);
+  }));
+}
+function showYT(id){
+  clearStage(); currentUrl = "yt:" + id; videoLoaded();
+  const a = new EventTarget(); ytA = a;
+  Object.assign(a, { _ready: false, _playing: false, _t: 0, _at: Date.now(), _rate: 1, _buf: false, _bt: null, _tok: 0 });
+  Object.defineProperties(a, {
+    paused: { get: () => !a._playing },
+    readyState: { get: () => a._ready ? 4 : 0 },
+    duration: { get(){ try{ return a._ready ? (ytP.getDuration() || NaN) : NaN; }catch(e){ return NaN; } } },
+    currentTime: {
+      get(){ try{ return a._ready ? ytP.getCurrentTime() : a._t; }catch(e){ return a._t; } },
+      set(t){ a._t = t; a._at = Date.now(); if(a._ready) ytP.seekTo(t, true); }
+    },
+    playbackRate: { get: () => a._rate, set(r){ a._rate = r; if(a._ready) ytP.setPlaybackRate(r); } }
+  });
+  a.play = () => {
+    const tok = ++a._tok; if(a._ready) ytP.playVideo();
+    setTimeout(() => { if(ytA === a && a._tok === tok && a._ready && ![1, 3].includes(ytP.getPlayerState())) toast("روی ویدیو بزن تا پخش شروع بشه"); }, 1800);
+    return Promise.resolve();
+  };
+  a.pause = () => { a._tok++; if(a._ready) ytP.pauseVideo(); };
+  const ev = n => a.dispatchEvent(new Event(n));
+  ["play", "pause", "seeked", "ratechange"].forEach(n => a.addEventListener(n, sendState));
+  a.addEventListener("pause", () => savePos(currentUrl, a, true));
+  const holder = document.createElement("div"); holder.id = "ytHolder"; $("stage").prepend(holder);
+  loadYT().then(() => {
+    if(ytA !== a) return;
+    const pv = { playsinline: 1, rel: 0, enablejsapi: 1 }; if(/^https?:/.test(location.protocol)) pv.origin = location.origin;
+    ytP = new YT.Player(holder, { videoId: id, host: "https://www.youtube-nocookie.com", playerVars: pv, events: {
+      onReady: () => { a._ready = true; ev("loadedmetadata"); },
+      onStateChange: e => {
+        const st = e.data;
+        if(st === 1){ clearTimeout(a._bt); setMyBuf(false); if(!a._playing){ a._playing = true; a._t = ytP.getCurrentTime(); a._at = Date.now(); ev("play"); } }
+        else if(st === 2 || st === 0 || st === 5){ clearTimeout(a._bt); setMyBuf(false); if(a._playing){ a._playing = false; ev("pause"); } }
+        else if(st === 3){ clearTimeout(a._bt); a._bt = setTimeout(() => setMyBuf(true), 700); }
+      },
+      onPlaybackRateChange: () => { a._rate = ytP.getPlaybackRate(); $("spd").textContent = a._rate + "×"; ev("ratechange"); },
+      onError: () => toast("این ویدیوی یوتیوب پخش نمی‌شه (لینک نامعتبر یا صاحبش اجازه‌ی نمایش تو سایت دیگه رو نداده)")
+    } });
+    a._poll = setInterval(() => {      // تشخیص جلو/عقب زدن (API رویداد seek نداره)
+      if(!a._ready) return;
+      let t, st; try{ t = ytP.getCurrentTime(); st = ytP.getPlayerState(); }catch(e){ return; }
+      if(st === 3){ a._buf = true; return; }
+      const exp = a._buf ? a._t : (a._playing ? a._t + (Date.now() - a._at) / 1000 * a._rate : a._t);
+      a._buf = false;
+      if(Math.abs(t - exp) > 1.8) ev("seeked");
+      a._t = t; a._at = Date.now(); savePos(currentUrl, a);
+    }, 500);
+  }).catch(() => { if(ytA === a) toast("یوتیوب بارگذاری نشد؛ فیلترشکن هر دو گوشی رو چک کن"); });
+  return a;
+}
 const isLocal = u => typeof u === "string" && u.startsWith("local:");
 const localSize = u => u.split(":")[1];
 const localName = u => u.split(":").slice(2).join(":");
@@ -482,7 +556,7 @@ function showVideo(src, key){
   v.addEventListener("pause", () => savePos(key, v, true));
   watchBuf(v); bufHold = false; others = {}; setMyBuf(false);
   v.addEventListener("error", () => toast(isLocal(key) ? "این فرمت فایل روی این گوشی پخش نمی‌شه" : "ویدیو باز نشد؛ شاید لینک منقضی شده"));
-  $("stage").querySelectorAll("video,iframe,.empty").forEach(e => e.remove());
+  clearStage();
   $("stage").prepend(v); return v;
 }
 function applyRemote(s){
@@ -493,6 +567,7 @@ function applyRemote(s){
     if(!localFile || localSize(localFile.key) !== localSize(s.url)){ askLocal(s); return; }
     pendingLocal = null;
     if(!v || currentUrl !== localFile.key) v = showVideo(localFile.obj, localFile.key);
+  } else if(s.url.startsWith("yt:")){ if(!v || currentUrl !== s.url) v = showYT(s.url.slice(3));
   } else if(!v || currentUrl !== s.url) v = showDirect(s.url);
   const go = () => {
     ignoreUntil = Date.now() + 1200;
@@ -509,7 +584,7 @@ function applyRemote(s){
 
 function askLocal(s){
   pendingLocal = s; currentUrl = "";
-  $("stage").querySelectorAll("video,iframe,.empty").forEach(e => e.remove());
+  clearStage();
   const d = document.createElement("div"); d.className = "empty";
   const i = document.createElement("div"), b = document.createElement("b");
   b.textContent = "پارتنرت یه فیلم از گوشی‌ش گذاشت";
@@ -627,13 +702,13 @@ $("msgIn").addEventListener("blur", () => setTyping(false));
 
 /* ---------- تاریخچه‌ی ویدیوها ---------- */
 const hist = [], histUrls = new Set();
-const titleOf = u => { if(isLocal(u)) return localName(u); try{ const x = new URL(u); return x.hostname + decodeURIComponent(x.pathname).slice(0, 40); }catch(e){ return u.slice(0, 50); } };
+const titleOf = u => { if(isLocal(u)) return localName(u); if(u.startsWith("yt:")) return "یوتیوب · " + u.slice(3); try{ const x = new URL(u); return x.hostname + decodeURIComponent(x.pathname).slice(0, 40); }catch(e){ return u.slice(0, 50); } };
 function renderHist(){
   const box = $("hist"); box.innerHTML = "";
   if(!hist.length){ const p = document.createElement("p"); p.className = "lbl"; p.textContent = "هنوز ویدیویی نذاشتین"; box.appendChild(p); return; }
   for(const h of hist){
     const b = document.createElement("button"); b.className = "hi";
-    const ic = document.createElement("span"); ic.textContent = isLocal(h.url) ? "📁" : "🔗";
+    const ic = document.createElement("span"); ic.textContent = isLocal(h.url) ? "📁" : h.url.startsWith("yt:") ? "▶️" : "🔗";
     const d = document.createElement("div"), t = document.createElement("b"), sm = document.createElement("small");
     t.textContent = titleOf(h.url);
     const pos = Number(LS.get("pos:" + h.url)) || 0;
@@ -643,7 +718,7 @@ function renderHist(){
       $("hsheet").classList.remove("on");
       if(locked){ toast("لینک قفله"); return; }
       if(isLocal(h.url)){ $("vidFile").click(); }
-      else { $("url").value = h.url; $("playBtn").click(); }
+      else { $("url").value = h.url.startsWith("yt:") ? "https://youtu.be/" + h.url.slice(3) : h.url; $("playBtn").click(); }
     };
     box.appendChild(b);
   }
@@ -663,17 +738,128 @@ const withTO = (p, ms = 10000) => Promise.race([p, new Promise((_, r) => setTime
 const errText = e => {
   const m = String((e && (e.code || e.message)) || e);
   if(/TIMEOUT|offline/i.test(m)) return "سرور جواب نمی‌ده؛ اینترنت یا VPN این گوشی رو چک کن";
-  if(/permission/i.test(m)) return "قوانین دیتابیس (Rules) اجازه‌ی خوندن/نوشتن نمی‌ده";
+  if(/permission/i.test(m)) return curB === "firebase" ? "قوانین دیتابیس (Rules) اجازه‌ی خوندن/نوشتن نمی‌ده" : "سرور اجازه نداد (" + m.replace(/^PERMISSION_DENIED:?\s*/, "") + ")";
   return "خطا: " + m;
 };
-const roomExists = async c => (await withTO(fb.get(fb.ref(db, `rooms/${c}/meta`)))).exists();
-async function initDb(){
-  if(db) return true;
-  try{
+/* ---------- سرور اختصاصی (جایگزین Firebase؛ بدون نیاز به سرویس‌های گوگل) ---------- */
+const BACKENDS = ["ws", "firebase"];   // اولی اصلیه (سرور خودت)، دومی یدک (Firebase). ترتیب رو عوض کن اگه می‌خوای برعکس باشه
+const WS_URL = "";      // خالی = همون دامنه‌ای که صفحه ازش باز شده؛ اگه صفحه جای دیگه‌ست: "wss://دامنه-سرور/ws"
+function createWsDb(){
+  const url = WS_URL || ((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+  const subs = new Map(), pending = new Map(), owned = new Set(), last = {}, infoCbs = new Set();
+  let ws = null, closed = false, open = false, queue = [], sid = 0, mid = 0, off = 0, delay = 800, readyRes, first = true, pingT = null;
+  const ready = new Promise(r => readyRes = r);
+  const send = m => { const j = JSON.stringify(m); if(open) ws.send(j); else if(m.op !== "ping" && queue.length < 300) queue.push(j); };
+  const snap = (ref, v) => ({ key: ref.key, ref, val: () => v === undefined ? null : JSON.parse(JSON.stringify(v)), exists: () => v !== null && v !== undefined });
+  const mkRef = path => { path = String(path).split("/").filter(Boolean).join("/"); return { path, key: path.split("/").pop() }; };
+  const child = (ref, k) => mkRef(ref.path + "/" + k);
+  const norm = v => v === undefined ? null : v;
+  function connectWs(){
+    if(closed) return;
+    try{ ws = new WebSocket(url); }catch(e){ return setTimeout(connectWs, delay); }
+    ws.onopen = () => {
+      open = true; delay = 800;
+      for(const [id, s] of subs) ws.send(JSON.stringify({ op: "sub", sid: id, path: s.ref.path, limit: s.limit }));
+      if(!first) for(const p of owned){ ws.send(JSON.stringify({ op: "odr", path: p })); if(last[p] !== undefined) ws.send(JSON.stringify({ op: "set", path: p, v: last[p] })); }
+      const q = queue; queue = []; q.forEach(j => ws.send(j));
+      clearInterval(pingT); pingT = setInterval(() => { if(open) ws.send('{"op":"ping"}'); }, 25000);
+    };
+    ws.onmessage = ev => {
+      let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+      if(m.t === "hello"){
+        off = m.now - Date.now(); if(m.ice && m.ice.length) ICE.iceServers = m.ice;
+        infoCbs.forEach(cb => cb(snap(mkRef(".info/serverTimeOffset"), off))); first = false; readyRes();
+      } else if(m.t === "snap"){ const s = subs.get(m.sid); if(s) deliver(s, norm(m.v)); }
+      else if(m.t === "ack"){ const p = pending.get(m.id); if(p){ pending.delete(m.id); m.err ? p.rej(Object.assign(new Error(m.err), { code: m.err })) : p.res(m.v); } }
+    };
+    ws.onclose = () => {
+      open = false; clearInterval(pingT);
+      for(const [, p] of pending) p.rej(new Error("offline")); pending.clear();
+      if(!closed){ setTimeout(connectWs, delay); delay = Math.min(delay * 1.7, 8000); }
+    };
+    ws.onerror = () => { try{ ws.close(); }catch(e){} };
+  }
+  function deliver(s, v){
+    if(s.type === "value"){ s.cb(snap(s.ref, v)); return; }
+    const cur = v && typeof v === "object" ? v : {}, keys = Object.keys(cur).sort(), prev = s.prev;
+    s.prev = cur;
+    if(s.type === "added"){ for(const k of keys) if(!prev || !(k in prev)) s.cb(snap(child(s.ref, k), cur[k])); }
+    else if(prev){ for(const k of Object.keys(prev)) if(!(k in cur)) s.cb(snap(child(s.ref, k), prev[k])); }
+  }
+  function listen(type, q, cb){
+    const ref = q.ref || q;
+    if(ref.path === ".info/serverTimeOffset"){ cb(snap(ref, off)); infoCbs.add(cb); return () => infoCbs.delete(cb); }
+    const id = ++sid, s = { type, ref, limit: q.limit || 0, cb, prev: null }; subs.set(id, s);
+    send({ op: "sub", sid: id, path: ref.path, limit: s.limit });
+    return () => { subs.delete(id); send({ op: "unsub", sid: id }); };
+  }
+  const call = (op, extra) => new Promise((res, rej) => { const id = ++mid; pending.set(id, { res, rej }); send({ op, id, ...extra }); });
+  const fb = {
+    ref: (db_, path) => mkRef(path),
+    query: (ref, ...cs) => Object.assign({ ref }, ...cs),
+    limitToLast: n => ({ limit: n }),
+    serverTimestamp: () => ({ ".sv": "timestamp" }),
+    onValue: (q, cb) => listen("value", q, cb),
+    onChildAdded: (q, cb) => listen("added", q, cb),
+    onChildRemoved: (q, cb) => listen("removed", q, cb),
+    get: async ref => snap(ref, norm(await call("get", { path: ref.path }))),
+    set: (ref, v) => { if(owned.has(ref.path)) last[ref.path] = v; const p = call("set", { path: ref.path, v: norm(v) }); p.catch(e => console.warn("set", ref.path, e.message)); return p; },
+    remove: ref => fb.set(ref, null).then(() => { delete last[ref.path]; }),
+    push: (ref, v) => {
+      const k = Date.now().toString(36).padStart(9, "0") + (++pushN % 1296).toString(36).padStart(2, "0") + Math.random().toString(36).slice(2, 5);
+      const r = child(ref, k); if(v !== undefined) fb.set(r, v); return r;
+    },
+    onDisconnect: ref => ({ remove(){ owned.add(ref.path); send({ op: "odr", path: ref.path }); } })
+  };
+  let pushN = 0;
+  connectWs();
+  return { fb, db: {}, ready, close(){ closed = true; clearInterval(pingT); try{ ws && ws.close(); }catch(e){} } };
+}
+/* دو دیتابیس: اصلی (سرور خودت) و یدک (Firebase). هر اتاق همون‌جایی ذخیره می‌شه که ساخته شده؛
+   موقع ورود با کد، هر دو هم‌زمان جستجو می‌شن و به همونی که اتاق توشه وصل می‌شیم. */
+const BK = {}; let curB = "";
+function bkLoad(name){
+  return BK[name] || (BK[name] = (async () => {
+    if(name === "ws"){
+      const w = createWsDb();
+      try{ await withTO(w.ready, 8000); }catch(e){ w.close(); throw e; }
+      return { fb: w.fb, db: w.db };
+    }
     const base = "https://www.gstatic.com/firebasejs/10.12.2/";
-    const [app, rtdb] = await withTO(Promise.all([import(base + "firebase-app.js"), import(base + "firebase-database.js")]), 15000);
-    fb = rtdb; db = rtdb.getDatabase(app.initializeApp({ databaseURL: DB_URL })); return true;
-  }catch(e){ jm("کتابخانه‌ی Firebase بارگذاری نشد؛ اینترنت یا VPN این گوشی رو چک کن"); console.error(e); return false; }
+    const [app, rtdb] = await withTO(Promise.all([import(base + "firebase-app.js"), import(base + "firebase-database.js")]), 10000);
+    return { fb: rtdb, db: rtdb.getDatabase(app.initializeApp({ databaseURL: DB_URL })) };
+  })().catch(e => { delete BK[name]; throw e; }));
+}
+function useBk(name, b){ fb = b.fb; db = b.db; curB = name; }
+async function initDb(){            // یه دیتابیس فعال می‌کنه: اول اصلی، اگه نشد یدک
+  if(db) return true;
+  for(const n of BACKENDS){ try{ useBk(n, await bkLoad(n)); return true; }catch(e){ console.warn("backend", n, e); } }
+  jm("به هیچ‌کدوم از سرورها وصل نشد؛ اینترنت یا VPN رو چک کن"); return false;
+}
+let partialFail = false;
+async function findRoom(c){        // اتاق رو تو هر دو دیتابیس هم‌زمان می‌گرده؛ اگه پیدا شد همون رو فعال می‌کنه
+  const pref = (getRooms().find(r => r.c === c) || {}).b;
+  const order = pref && BACKENDS.includes(pref) ? [pref, ...BACKENDS.filter(n => n !== pref)] : BACKENDS;
+  partialFail = false;
+  return new Promise((resolve, reject) => {
+    let left = order.length, done = false; const errs = [];
+    order.forEach(async n => {
+      try{
+        const b = await bkLoad(n);
+        if((await withTO(b.fb.get(b.fb.ref(b.db, `rooms/${c}/meta`)))).exists() && !done){ done = true; useBk(n, b); resolve(true); }
+      }catch(e){ errs.push(e); console.warn("backend", n, e); }
+      if(--left === 0 && !done){ done = true; if(errs.length === order.length) reject(errs[0]); else { partialFail = errs.length > 0; resolve(false); } }
+    });
+  });
+}
+/* خروج کاربر: ۴ ثانیه صبر می‌کنیم (قطعی کوتاه نباشه)، بعد فقط یک نفر (کوچک‌ترین شناسه‌ی حاضر) پیامش رو تو چت می‌نویسه */
+function leftLater(k, n){
+  setTimeout(() => {
+    if(pres[k] || !db) return;
+    const alive = Object.keys(pres).filter(x => x !== k).sort();
+    if(alive[0] !== CID) return;
+    fb.push(fb.ref(db, `rooms/${ROOM}/chat`), { sys: true, text: n + " از اتاق خارج شد", by: CID, t: fb.serverTimestamp() });
+  }, 4000);
 }
 async function connect(){
   if(!(await initDb())) return;
@@ -683,7 +869,12 @@ async function connect(){
   fb.onValue(R("profiles"), s => { profiles = s.val() || {}; repaint(); });
   const me_ = R("presence/" + CID);
   fb.set(me_, { name: me }); fb.onDisconnect(me_).remove();
-  fb.onValue(R("presence"), s => { pres = {}; for(const [k, v] of Object.entries(s.val() || {})) pres[k] = v.name; renderPeople(); });
+  let prevPres = null;
+  fb.onValue(R("presence"), s => {
+    const np = {}; for(const [k, v] of Object.entries(s.val() || {})) np[k] = v.name;
+    if(prevPres) for(const [k, n] of Object.entries(prevPres)) if(!(k in np) && k !== CID) leftLater(k, n);
+    prevPres = { ...np }; pres = np; renderPeople();
+  });
   fb.onChildAdded(fb.query(R("chat"), fb.limitToLast(50)), s => { const m = s.val(); addMsg(m, s.key); notify(m); lastKey = s.key; markReadSoon(); });
   fb.onValue(R("read"), s => { let mx = ""; for(const [k, v] of Object.entries(s.val() || {})) if(k !== CID && v > mx) mx = v; othersRead = mx; updTicks(); });
   const ty = R("typing/" + CID); fb.onDisconnect(ty).remove();
@@ -844,13 +1035,13 @@ const getRooms = () => { try{ return JSON.parse(LS.get("rooms") || "[]").filter(
 const saveRooms = a => LS.set("rooms", JSON.stringify(a.slice(0, 50)));
 function rememberRoom(c, mine){
   const a = getRooms(), r = a.find(x => x.c === c);
-  if(r){ if(mine) r.mine = true; r.t = Date.now(); } else a.push({ c, mine: !!mine, t: Date.now() });
+  if(r){ if(mine) r.mine = true; r.t = Date.now(); if(curB) r.b = curB; } else a.push({ c, mine: !!mine, t: Date.now(), b: curB });
   a.sort((x, y) => y.t - x.t); saveRooms(a);
 }
 const forgetRoom = c => saveRooms(getRooms().filter(r => r.c !== c));
 async function makeRoom(){
   let c, n = 0;
-  do{ c = genCode(); }while((await roomExists(c)) && ++n < 5);
+  do{ c = genCode(); }while((await withTO(fb.get(fb.ref(db, `rooms/${c}/meta`)))).exists() && ++n < 5);
   await withTO(fb.set(fb.ref(db, `rooms/${c}/meta`), { created: fb.serverTimestamp() }));
   return c;
 }
@@ -881,23 +1072,24 @@ async function enterSaved(c){
     LS.set("auto", c); history.replaceState(null, "", "#" + c); location.reload(); return;
   }
   getName(); jm("در حال اتصال...");
-  if(await initDb()){
-    try{
-      if(await roomExists(c)){ jm(""); ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
-      else { forgetRoom(c); refreshRooms(); jm("این اتاق دیگه وجود نداره"); }
-    }catch(e){ jm(errText(e)); console.error(e); }
-  }
+  try{
+    if(await findRoom(c)){ jm(""); ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
+    else if(partialFail) jm("اتاق پیدا نشد؛ یکی از سرورها در دسترس نیست، بعداً دوباره امتحان کن");
+    else { forgetRoom(c); refreshRooms(); jm("این اتاق دیگه وجود نداره"); }
+  }catch(e){ jm(errText(e)); console.error(e); }
 }
 async function delRoom(c, mine){
   if(!mine){ forgetRoom(c); refreshRooms(); return; }
   if(!confirm("اتاق " + c + " با همه‌ی پیام‌ها و تاریخچه‌اش برای همیشه حذف بشه؟")) return;
   try{
-    if(!(await initDb())) return;
-    await withTO(fb.remove(fb.ref(db, `rooms/${c}`)));
+    const rec = getRooms().find(r => r.c === c) || {}, names = rec.b ? [rec.b] : BACKENDS;
+    let ok = false, last;
+    for(const n of names){ try{ const b = await bkLoad(n); await withTO(b.fb.remove(b.fb.ref(b.db, `rooms/${c}`))); ok = true; break; }catch(e){ last = e; } }
+    if(!ok) throw last;
     forgetRoom(c); msg("اتاق حذف شد");
     if(inRoom && c === ROOM){ history.replaceState(null, "", location.pathname + location.search); setTimeout(() => location.reload(), 700); }
     else refreshRooms();
-  }catch(e){ msg("حذف نشد: " + errText(e) + " — فایل database.rules.json جدید رو تو Firebase منتشر کن"); console.error(e); }
+  }catch(e){ msg("حذف نشد: " + errText(e) + " " + (curB === "firebase" ? "— فایل database.rules.json جدید رو تو Firebase منتشر کن" : "")); console.error(e); }
 }
 $("roomsBtn").onclick = () => { refreshRooms(); $("rsheet").classList.add("on"); };
 $("rclose").onclick = () => $("rsheet").classList.remove("on");
@@ -911,18 +1103,17 @@ refreshRooms();
 
 function enterRoom(){
   inRoom = true; rememberRoom(ROOM);
+  if(curB && curB !== BACKENDS[0]) setTimeout(() => toast("روی سرور یدک وصل شدی"), 600);
   $("join").style.display = "none"; $("codeShow").textContent = ROOM;
   profiles[CID] = { name: me, avatar: avatar || null }; pres[CID] = me; renderPeople(); connect();
 }
 if(ROOM){ $("choice").hidden = true; $("direct").hidden = false; $("dirCode").textContent = ROOM; }
 $("directBtn").onclick = async () => {
   getName(); $("directBtn").disabled = true; jm("در حال اتصال...");
-  if(await initDb()){
-    try{
-      if(await roomExists(ROOM)){ jm(""); enterRoom(); }
-      else { $("otherBtn").click(); jm("اتاقی با این کد پیدا نشد؛ یه اتاق جدید بساز یا کد درست رو بزن"); }
-    }catch(e){ jm(errText(e)); console.error(e); }
-  }
+  try{
+    if(await findRoom(ROOM)){ jm(""); enterRoom(); }
+    else { $("otherBtn").click(); jm(partialFail ? "اتاق پیدا نشد؛ یکی از سرورها در دسترس نیست" : "اتاقی با این کد پیدا نشد؛ یه اتاق جدید بساز یا کد درست رو بزن"); }
+  }catch(e){ jm(errText(e)); console.error(e); }
   $("directBtn").disabled = false;
 };
 if(ROOM && LS.get("auto") === ROOM){ LS.set("auto", ""); setTimeout(() => $("directBtn").click(), 0); }
@@ -948,12 +1139,10 @@ $("goBtn").onclick = async () => {
   const c = $("codeIn").value.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if(c.length < 4){ jm("کد رو کامل وارد کن"); return; }
   $("goBtn").disabled = true; jm("در حال اتصال...");
-  if(await initDb()){
-    try{
-      if(await roomExists(c)){ jm(""); ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
-      else jm("اتاقی با این کد پیدا نشد");
-    }catch(e){ jm(errText(e)); console.error(e); }
-  }
+  try{
+    if(await findRoom(c)){ jm(""); ROOM = c; history.replaceState(null, "", "#" + c); enterRoom(); }
+    else jm(partialFail ? "اتاق پیدا نشد؛ یکی از سرورها در دسترس نیست" : "اتاقی با این کد پیدا نشد");
+  }catch(e){ jm(errText(e)); console.error(e); }
   $("goBtn").disabled = false;
 };
 $("codeIn").addEventListener("keydown", e => { if(e.key === "Enter") $("goBtn").click(); });
@@ -967,12 +1156,12 @@ $("playBtn").onclick = () => {
   if(!u){ toast("اول یه لینک بذار"); return; }
   const id = ytId(u);
   if(id){
-    currentUrl = "";
-    $("stage").querySelectorAll("video,iframe,.empty").forEach(e => e.remove());
-    const f = document.createElement("iframe");
-    f.src = "https://www.youtube-nocookie.com/embed/" + id + "?playsinline=1&rel=0";
-    f.allow = "autoplay; encrypted-media; picture-in-picture"; $("stage").prepend(f); videoLoaded();
-    toast("یوتیوب فقط برای خودته (هماهنگ نمی‌شه)");
+    const key = "yt:" + id, yv = showYT(id), t0 = resumeFor(key, yv);
+    if(db){
+      fb.set(fb.ref(db, `rooms/${ROOM}/video`), { url: key, playing: false, time: t0, ts: fb.serverTimestamp(), by: CID });
+      fb.push(fb.ref(db, `rooms/${ROOM}/chat`), { sys: true, text: me + " یه ویدیوی یوتیوب گذاشت", by: CID, t: fb.serverTimestamp() });
+    }
+    addHistory(key); askGenre();
   } else if(/aparat\.com\/v\//.test(u)){ toast("این لینک صفحه‌ست؛ لینک مستقیم mp4 بذار");
   } else if(/^https?:\/\//.test(u)){
     const dv = showDirect(u), t0 = resumeFor(u, dv);
